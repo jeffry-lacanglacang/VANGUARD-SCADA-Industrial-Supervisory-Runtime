@@ -1,0 +1,3033 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VANGUARD SCADA // Industrial Supervisory Runtime</title>
+  <style>
+    /* ==========================================================================
+       1. DESIGN TOKENS & HIGH-PERFORMANCE INDUSTRIAL HMI THEME
+       ========================================================================== */
+    :root {
+      --bg-void: #080b0f;
+      --bg-canvas: #0b0f14;
+      --bg-panel: #121821;
+      --bg-elevated: #18202c;
+      --bg-hover: #1f2938;
+      --border-subtle: #243040;
+      --border-strong: #334358;
+
+      --text-primary: #e6edf5;
+      --text-secondary: #93a4b8;
+      --text-muted: #607287;
+
+      /* ISA-101 / Industrial State Colors */
+      --accent-cyan: #00d2ff;
+      --accent-cyan-dim: rgba(0, 210, 255, 0.14);
+      --state-run: #10b981;
+      --state-run-dim: rgba(16, 185, 129, 0.15);
+      --state-stop: #64748b;
+
+      /* ISA-18.2 Alarm Colors */
+      --alm-crit: #ef4444;
+      --alm-crit-dim: rgba(239, 68, 68, 0.16);
+      --alm-high: #f59e0b;
+      --alm-high-dim: rgba(245, 158, 11, 0.16);
+      --alm-med: #eab308;
+      --alm-info: #38bdf8;
+
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --radius-sm: 4px;
+      --radius-md: 6px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      background-color: var(--bg-canvas);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      line-height: 1.4;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-canvas);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-strong);
+      border-radius: 3px;
+    }
+
+    /* ==========================================================================
+       2. LAYOUT SHELL
+       ========================================================================== */
+    .app-shell {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Top Supervisory Header */
+    .topbar {
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 8px 14px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .brand-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      color: var(--text-primary);
+    }
+
+    .brand-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      box-shadow: 0 0 8px var(--accent-cyan);
+    }
+
+    .unit-select {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      padding: 4px 8px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      cursor: pointer;
+    }
+
+    .kpi-strip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .kpi-pill {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 4px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+    }
+
+    .kpi-label {
+      font-size: 10px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .kpi-val {
+      font-size: 12px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .kpi-pill.alarm-active {
+      border-color: var(--alm-crit);
+      background: var(--alm-crit-dim);
+      animation: pulse-border 1.2s infinite;
+    }
+
+    @keyframes pulse-border {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45); }
+      50% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); }
+    }
+
+    .runtime-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .scan-status {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-subtle);
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-led {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--state-run);
+    }
+    .status-led.offline {
+      background: var(--alm-crit);
+      box-shadow: 0 0 6px var(--alm-crit);
+    }
+
+    /* Buttons */
+    .btn {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, transform 0.05s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      user-select: none;
+    }
+    .btn:hover:not(:disabled) {
+      background: var(--bg-hover);
+      border-color: var(--text-secondary);
+    }
+    .btn:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .btn-cyan {
+      --font-sans: "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      --font-mono: "Cascadia Code", "Cascadia Mono", Consolas, ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+      --radius-sm: 4px;
+      --radius-md: 6px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      background-color: var(--bg-canvas);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      line-height: 1.4;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-canvas);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-strong);
+      border-radius: 3px;
+    }
+
+    /* ==========================================================================
+       2. LAYOUT SHELL (WINDOWS DESKTOP CONTROL ROOM)
+       ========================================================================== */
+    .app-shell {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    @media (min-width: 1200px) {
+      .app-shell {
+        height: 100vh;
+        min-height: 700px;
+        overflow: hidden;
+      }
+    }
+
+    /* Top Supervisory Header */
+    .topbar {
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 6px 14px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      flex-shrink: 0;
+    }
+    /* Main Workspace Grid */
+    .workspace {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* Left Navigation Rail */
+    .nav-rail {
+      width: 215px;
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 9px 10px;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      background: transparent;
+      border: 1px solid transparent;
+      cursor: pointer;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .nav-item:hover {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+    }
+    .nav-item.active {
+      background: var(--accent-cyan-dim);
+      color: var(--accent-cyan);
+      border-color: rgba(0, 210, 255, 0.35);
+      font-weight: 600;
+    }
+    .nav-item-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .nav-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      background: var(--alm-crit);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .nav-footer {
+      padding: 12px;
+      border-top: 1px solid var(--border-subtle);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .shortcut-hint-box {
+      margin-top: 4px;
+      padding: 7px 8px;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      line-height: 1.45;
+      font-size: 9.5px;
+    }
+
+    /* Center Viewport */
+    .viewport {
+      flex: 1;
+      padding: 14px;
+      overflow-y: auto;
+      overflow-anchor: none;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .screen {
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+      flex: 1;
+      min-height: 0;
+    }
+    .screen.active {
+      display: flex;
+    }
+
+    /* Cards & Section Headers */
+    .panel-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 9px 14px;
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .panel-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-body {
+      padding: 14px;
+    }
+
+    /* ==========================================================================
+       3. OVERVIEW / P&ID + SLD MIMIC & RIGHT FACEPLATE DRAWER
+       ========================================================================== */
+    .mimic-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      gap: 14px;
+      align-items: start;
+      flex: 1;
+      min-height: 0;
+    }
+
+    @media (min-width: 1500px) {
+      .mimic-layout {
+        grid-template-columns: minmax(0, 1fr) 370px;
+      }
+    }
+
+    .svg-stage {
+      width: 100%;
+      background: #0a0e13;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .svg-stage svg {
+      width: 100%;
+      max-height: calc(100vh - 215px);
+      height: auto;
+      display: block;
+      user-select: none;
+      shape-rendering: geometricPrecision;
+    }
+
+    .svg-stage {
+      width: 100%;
+      background: #0a0e13;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .svg-stage svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      user-select: none;
+    }
+
+    .equip-node {
+      cursor: pointer;
+      transition: filter 0.15s;
+    }
+    .equip-node:hover {
+      filter: brightness(1.22);
+    }
+
+    /* Animated flow dash */
+    @keyframes flow-march {
+      to {
+        stroke-dashoffset: -24;
+      }
+    }
+    .pipe-flow-active {
+      stroke-dasharray: 6 6;
+      animation: flow-march 0.7s linear infinite;
+    }
+
+    @keyframes spin-impeller {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Faceplate Drawer */
+    .faceplate {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      max-height: calc(100vh - 145px);
+      overflow-y: auto;
+    }
+
+    .fp-header {
+      padding: 10px 14px;
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .fp-tag {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+    }
+
+    .fp-desc {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .fp-section {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .fp-section:last-child {
+      border-bottom: none;
+    }
+
+    .fp-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+    }
+
+    .fp-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .fp-metric {
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 6px 8px;
+      font-family: var(--font-mono);
+    }
+    .fp-metric-name {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+    .fp-metric-val {
+      font-size: 13px;
+      font-weight: 700;
+      margin-top: 2px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .perm-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 4px 8px;
+      background: var(--bg-canvas);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .perm-ok { color: var(--state-run); font-weight: 700; }
+    .perm-fail { color: var(--alm-crit); font-weight: 700; }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent-cyan);
+      cursor: pointer;
+    }
+
+    /* Quick Equipment Selector Bar */
+    .quick-equip-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 8px 14px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      align-items: center;
+    }
+
+    /* ==========================================================================
+       4. TABLES (ALARMS, EVENTS, MODBUS REGISTERS)
+       ========================================================================== */
+    .table-wrap {
+      width: 100%;
+      overflow: auto;
+      overflow-anchor: none;
+    }
+
+    table.scada-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      text-align: left;
+    }
+
+    table.scada-table th {
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      font-weight: 600;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border-strong);
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    table.scada-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--border-subtle);
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    table.scada-table tbody tr:hover {
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+    .badge-crit { background: var(--alm-crit-dim); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.45); }
+    .badge-high { background: var(--alm-high-dim); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.45); }
+    .badge-med  { background: rgba(234, 179, 8, 0.14); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.4); }
+    .badge-info { background: var(--accent-cyan-dim); color: var(--accent-cyan); border: 1px solid rgba(0, 210, 255, 0.35); }
+    .badge-norm { background: rgba(100, 116, 139, 0.18); color: var(--text-secondary); border: 1px solid var(--border-strong); }
+    .badge-good { background: var(--state-run-dim); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+
+    .blink-text {
+      animation: blink-opacity 0.9s steps(2, start) infinite;
+    }
+    @keyframes blink-opacity {
+      to { opacity: 0.35; }
+    }
+
+    /* ==========================================================================
+       5. TRENDS & MODBUS SPECIFICS
+       ========================================================================== */
+    .trend-canvas-wrap {
+      position: relative;
+      width: 100%;
+      height: 330px;
+      background: #090d12;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+    }
+
+    .trend-canvas-wrap canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .pen-toggles {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pen-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-strong);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .pen-chip.inactive {
+      opacity: 0.45;
+    }
+    .pen-swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
+    .modbus-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.35fr;
+      gap: 14px;
+    }
+
+    .reg-input {
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-strong);
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 3px 6px;
+      border-radius: 3px;
+      width: 82px;
+    }
+
+    /* Toast Notification */
+    .toast-container {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      z-index: 90;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      background: var(--bg-elevated);
+      border-left: 3px solid var(--accent-cyan);
+      border-top: 1px solid var(--border-strong);
+      border-right: 1px solid var(--border-strong);
+      border-bottom: 1px solid var(--border-strong);
+      color: var(--text-primary);
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.55);
+    }
+    .toast.warn { border-left-color: var(--alm-high); }
+    .toast.err  { border-left-color: var(--alm-crit); }
+
+    /* ==========================================================================
+       6. RESPONSIVE BREAKPOINTS
+       ========================================================================== */
+    @media (max-width: 1120px) {
+      .mimic-layout {
+        grid-template-columns: 1fr;
+      }
+      .faceplate {
+        position: static;
+      }
+      .modbus-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 820px) {
+      .workspace {
+        flex-direction: column;
+      }
+      .nav-rail {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+      .nav-list {
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 6px 8px;
+      }
+      .nav-item {
+        white-space: nowrap;
+        padding: 7px 10px;
+      }
+      .nav-footer {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- ======================================================================
+         TOP SUPERVISORY HEADER BAR
+         ====================================================================== -->
+    <header class="topbar">
+      <div class="brand-group">
+        <div class="brand-badge">
+          <span class="brand-dot" id="brand-dot"></span>
+          <span>VANGUARD SCADA // RUNTIME</span>
+        </div>
+        <select id="unit-selector" class="unit-select" aria-label="Active Plant Unit">
+          <option value="U1">Unit 1: Substation &amp; Process Water</option>
+          <option value="U2">Unit 2: High-Demand Peak Load Scenario</option>
+        </select>
+      </div>
+
+      <div class="kpi-strip">
+        <div class="kpi-pill" id="kpi-alarm-pill">
+          <span class="kpi-label">Unack Alarms</span>
+          <span class="kpi-val" id="kpi-unack-count">0</span>
+        </div>
+        <div class="kpi-pill">
+          <span class="kpi-label">415V Bus</span>
+          <span class="kpi-val" id="kpi-bus-v">415.0 V</span>
+        </div>
+        <div class="kpi-pill">
+          <span class="kpi-label">Feeder Load</span>
+          <span class="kpi-val" id="kpi-load">0.0 A / 0.0 kW</span>
+        </div>
+        <div class="kpi-pill">
+          <span class="kpi-label">PLC Link</span>
+          <span class="kpi-val" id="kpi-link" style="color: var(--state-run);">ONLINE</span>
+        </div>
+      </div>
+
+      <div class="runtime-controls">
+        <div class="scan-status">
+          <span class="status-led" id="scan-led"></span>
+          <span id="scan-label">SCAN: 250ms | POLL: OK</span>
+          <span>|</span>
+          <span id="sys-clock">00:00:00</span>
+        </div>
+
+        <button class="btn" id="btn-comm-toggle" title="Toggle Simulated PLC/RTU Link Fault">LINK: ONLINE</button>
+
+        <div style="display:flex; gap:2px;" role="group" aria-label="Simulation Speed">
+          <button class="btn btn-active" data-speed="1">1x</button>
+          <button class="btn" data-speed="2">2x</button>
+          <button class="btn" data-speed="5">5x</button>
+          <button class="btn" data-speed="0">PAUSE</button>
+        </div>
+
+        <button class="btn btn-amber" id="btn-ack-all">ACK ALL</button>
+      </div>
+    </header>
+
+    <!-- ======================================================================
+         ISA-18.2 TOP ALARM BANNER
+         ====================================================================== -->
+    <div class="alarm-banner" id="alarm-banner">
+      <div class="banner-msg">
+        <span class="badge badge-norm" id="banner-sev">NORMAL</span>
+        <span id="banner-text" style="color: var(--text-secondary);">No unacknowledged process or electrical alarms.</span>
+      </div>
+      <div style="display:flex; gap:6px; flex-shrink:0;">
+        <button class="btn" id="btn-banner-ack" disabled>ACK LATEST</button>
+        <button class="btn" id="btn-goto-alarms">ALARM SUMMARY</button>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         MAIN WORKSPACE (LEFT NAV + CENTER VIEWPORT)
+         ====================================================================== -->
+    <div class="workspace">
+      <nav class="nav-rail" aria-label="HMI Screen Navigation">
+        <div class="nav-list">
+          <button class="nav-item active" data-screen="screen-mimic" title="Overview / P&ID (Shortcut: 1 or Alt+1)">
+            <span class="nav-item-left">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              <span>Overview / P&amp;ID</span>
+            </span>
+            <span class="fp-label" style="font-size:9px;">[1]</span>
+          </button>
+
+          <button class="nav-item" data-screen="screen-alarms" title="Alarms & Events (Shortcut: 2 or Alt+2)">
+            <span class="nav-item-left">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span>Alarms &amp; Events</span>
+            </span>
+            <span class="nav-badge" id="nav-alarm-badge" style="display:none;">0</span>
+          </button>
+
+          <button class="nav-item" data-screen="screen-trends" title="Live Trends (Shortcut: 3 or Alt+3)">
+            <span class="nav-item-left">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <span>Live Trends</span>
+            </span>
+            <span class="fp-label" style="font-size:9px;">[3]</span>
+          </button>
+
+          <button class="nav-item" data-screen="screen-modbus" title="Modbus I/O Driver (Shortcut: 4 or Alt+4)">
+            <span class="nav-item-left">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="6" rx="1"/><rect x="2" y="14" width="20" height="6" rx="1"/><line x1="6" y1="7" x2="6.01" y2="7"/><line x1="6" y1="17" x2="6.01" y2="17"/></svg>
+              <span>Modbus I/O Driver</span>
+            </span>
+            <span class="fp-label" style="font-size:9px;">[4]</span>
+          </button>
+        </div>
+
+        <div class="nav-footer">
+          <div>DRIVER: MODBUS TCP/IP</div>
+          <div>SLAVE ID: 01 (10.14.22.10)</div>
+          <div>ISA-18.2 / ISA-101 HMI</div>
+          <div id="footer-uptime">UPTIME: 00:00:00</div>
+          <div class="shortcut-hint-box" id="desktop-shortcut-hint">
+            <strong style="color:var(--text-primary);">KEYS:</strong> [1–4 / Alt+1..4] Views · [A] Ack All · [Space] Pause · [Esc] Reset Select
+          </div>
+        </div>
+      </nav>
+
+      <main class="viewport">
+        <!-- ==================================================================
+             SCREEN 1: OVERVIEW / P&ID + SLD MIMIC
+             ================================================================== -->
+        <section class="screen active" id="screen-mimic">
+          <div class="quick-equip-bar">
+            <span class="fp-label" style="margin-right:4px;">Select Asset Faceplate:</span>
+            <button class="btn btn-cyan" data-select-asset="CB-101">CB-101 (Main Breaker)</button>
+            <button class="btn" data-select-asset="MOV-101">MOV-101 (Inlet Valve)</button>
+            <button class="btn" data-select-asset="TK-101">TK-101 (Storage Tank)</button>
+            <button class="btn" data-select-asset="P-101">P-101 (Feed Pump)</button>
+            <button class="btn" data-select-asset="P-102">P-102 (Booster Pump)</button>
+          </div>
+
+          <div class="mimic-layout">
+            <!-- Interactive Vector SLD + P&ID Diagram -->
+            <div class="panel-card">
+              <div class="panel-header">
+                <div class="panel-title">
+                  <span>UNIT-01 // 13.8kV-415V SLD &amp; WATER PROCESS P&amp;ID</span>
+                </div>
+                <div style="display:flex; gap:12px; font-family:var(--font-mono); font-size:10px; color:var(--text-secondary);">
+                  <span><strong style="color:var(--accent-cyan);">■</strong> ENERGIZED / FLOW</span>
+                  <span><strong style="color:var(--state-run);">■</strong> RUNNING / OPEN</span>
+                  <span><strong style="color:var(--alm-crit);">■</strong> TRIP / ALARM</span>
+                </div>
+              </div>
+
+              <div class="panel-body" style="padding:10px;">
+                <div class="svg-stage">
+                  <svg id="pid-svg" viewBox="0 0 920 530" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <pattern id="grid-pat" width="20" height="20" patternUnits="userSpaceOnUse">
+                        <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#141c26" stroke-width="1"/>
+                      </pattern>
+                    </defs>
+                    <rect width="920" height="530" fill="url(#grid-pat)"/>
+
+                    <!-- SECTION DIVIDERS -->
+                    <line x1="335" y1="12" x2="335" y2="518" stroke="#1e293b" stroke-dasharray="4 4"/>
+                    <text x="18" y="26" fill="#64748b" font-family="monospace" font-size="11" font-weight="bold">ELECTRICAL SLD (13.8kV / 415V MCC)</text>
+                    <text x="352" y="26" fill="#64748b" font-family="monospace" font-size="11" font-weight="bold">PROCESS WATER STORAGE &amp; BOOSTING P&amp;ID</text>
+
+                    <!-- ================= ELECTRICAL SLD (LEFT) ================= -->
+                    <!-- 13.8kV Utility Grid Feed -->
+                    <line x1="165" y1="42" x2="165" y2="75" stroke="#00d2ff" stroke-width="3"/>
+                    <rect x="115" y="42" width="100" height="20" rx="3" fill="#121821" stroke="#00d2ff"/>
+                    <text x="165" y="55" fill="#00d2ff" font-family="monospace" font-size="10" text-anchor="middle" font-weight="bold">GRID 13.8 kV</text>
+
+                    <!-- Step-Down Transformer T-101 -->
+                    <circle cx="165" cy="92" r="16" fill="none" stroke="#00d2ff" stroke-width="2.2"/>
+                    <circle cx="165" cy="112" r="16" fill="none" stroke="#00d2ff" stroke-width="2.2"/>
+                    <text x="192" y="100" fill="#93a4b8" font-family="monospace" font-size="10">TX-101</text>
+                    <text x="192" y="113" fill="#607287" font-family="monospace" font-size="9">2.5 MVA Dyn11</text>
+
+                    <line x1="165" y1="128" x2="165" y2="152" stroke="#00d2ff" stroke-width="3"/>
+
+                    <!-- Main Air Circuit Breaker CB-101 -->
+                    <g class="equip-node" id="svg-cb101" data-asset="CB-101">
+                      <rect x="122" y="152" width="86" height="58" rx="4" fill="#121821" stroke="#334358" stroke-width="1.5" id="cb101-box"/>
+                      <circle cx="165" cy="166" r="3" fill="#00d2ff"/>
+                      <circle cx="165" cy="196" r="3" fill="#64748b" id="cb101-bot-dot"/>
+                      <line x1="165" y1="166" x2="165" y2="196" stroke="#10b981" stroke-width="3" id="cb101-blade"/>
+                      <text x="114" y="176" fill="#e6edf5" font-family="monospace" font-size="11" text-anchor="end" font-weight="bold">CB-101</text>
+                      <text x="114" y="190" fill="#10b981" font-family="monospace" font-size="10" text-anchor="end" id="cb101-state-txt">CLOSED</text>
+                    </g>
+
+                    <!-- Line to 415V Main Bus -->
+                    <line x1="165" y1="210" x2="165" y2="242" stroke="#00d2ff" stroke-width="3" id="line-cb-bus"/>
+
+                    <!-- 415V Main Busbar -->
+                    <rect x="35" y="242" width="275" height="8" rx="2" fill="#00d2ff" id="main-busbar"/>
+                    <text x="38" y="235" fill="#00d2ff" font-family="monospace" font-size="10" font-weight="bold" id="svg-bus-label">415V MAIN BUS: 415.0 V | 50.0 Hz</text>
+
+                    <!-- MCC Feeder 1 (P-101) -->
+                    <line x1="95" y1="250" x2="95" y2="292" stroke="#00d2ff" stroke-width="2.5" id="fdr1-top"/>
+                    <rect x="75" y="292" width="40" height="28" rx="3" fill="#121821" stroke="#334358" id="fdr1-contactor"/>
+                    <text x="95" y="309" fill="#93a4b8" font-family="monospace" font-size="9" text-anchor="middle">VFD-1</text>
+                    <line x1="95" y1="320" x2="95" y2="355" stroke="#64748b" stroke-width="2.5" id="fdr1-bot"/>
+                    <!-- Motor M-101 -->
+                    <g class="equip-node" data-asset="P-101">
+                      <circle cx="95" cy="378" r="22" fill="#121821" stroke="#64748b" stroke-width="2.2" id="m101-circle"/>
+                      <text x="95" y="382" fill="#e6edf5" font-family="monospace" font-size="12" text-anchor="middle" font-weight="bold">M1</text>
+                      <rect x="42" y="408" width="106" height="58" rx="4" fill="#121821" stroke="#243040"/>
+                      <text x="95" y="423" fill="#e6edf5" font-family="monospace" font-size="10" text-anchor="middle" font-weight="bold">P-101 MOTOR</text>
+                      <text x="95" y="437" fill="#00d2ff" font-family="monospace" font-size="10" text-anchor="middle" id="svg-m1-amp">32.4 A | 42.0 Hz</text>
+                      <text x="95" y="451" fill="#93a4b8" font-family="monospace" font-size="10" text-anchor="middle" id="svg-m1-temp">TEMP: 54.2 °C</text>
+                    </g>
+
+                    <!-- MCC Feeder 2 (P-102) -->
+                    <line x1="235" y1="250" x2="235" y2="292" stroke="#00d2ff" stroke-width="2.5" id="fdr2-top"/>
+                    <rect x="215" y="292" width="40" height="28" rx="3" fill="#121821" stroke="#334358" id="fdr2-contactor"/>
+                    <text x="235" y="309" fill="#93a4b8" font-family="monospace" font-size="9" text-anchor="middle">VFD-2</text>
+                    <line x1="235" y1="320" x2="235" y2="355" stroke="#64748b" stroke-width="2.5" id="fdr2-bot"/>
+                    <!-- Motor M-102 -->
+                    <g class="equip-node" data-asset="P-102">
+                      <circle cx="235" cy="378" r="22" fill="#121821" stroke="#64748b" stroke-width="2.2" id="m102-circle"/>
+                      <text x="235" y="382" fill="#e6edf5" font-family="monospace" font-size="12" text-anchor="middle" font-weight="bold">M2</text>
+                      <rect x="182" y="408" width="106" height="58" rx="4" fill="#121821" stroke="#243040"/>
+                      <text x="235" y="423" fill="#e6edf5" font-family="monospace" font-size="10" text-anchor="middle" font-weight="bold">P-102 MOTOR</text>
+                      <text x="235" y="437" fill="#00d2ff" font-family="monospace" font-size="10" text-anchor="middle" id="svg-m2-amp">0.0 A | 0.0 Hz</text>
+                      <text x="235" y="451" fill="#93a4b8" font-family="monospace" font-size="10" text-anchor="middle" id="svg-m2-temp">TEMP: 34.0 °C</text>
+                    </g>
+
+                    <!-- ================= PROCESS P&ID (RIGHT) ================= -->
+                    <!-- Raw Water Inlet Pipe -->
+                    <text x="355" y="74" fill="#93a4b8" font-family="monospace" font-size="10">RAW SUPPLY</text>
+                    <line x1="355" y1="90" x2="430" y2="90" stroke="#1e293b" stroke-width="8" stroke-linecap="round"/>
+                    <line x1="355" y1="90" x2="430" y2="90" stroke="#00d2ff" stroke-width="3" id="pipe-inlet-1"/>
+
+                    <!-- Motorized Inlet Valve MOV-101 -->
+                    <g class="equip-node" id="svg-mov101" data-asset="MOV-101">
+                      <rect x="435" y="50" width="30" height="18" rx="2" fill="#18202c" stroke="#334358"/>
+                      <text x="450" y="62" fill="#e6edf5" font-family="monospace" font-size="10" text-anchor="middle" font-weight="bold">M</text>
+                      <line x1="450" y1="68" x2="450" y2="90" stroke="#93a4b8" stroke-width="2"/>
+                      <polygon points="432,78 450,90 432,102" fill="#10b981" stroke="#10b981" id="mov101-tri1"/>
+                      <polygon points="468,78 450,90 468,102" fill="#10b981" stroke="#10b981" id="mov101-tri2"/>
+                      <text x="450" y="117" fill="#e6edf5" font-family="monospace" font-size="10" text-anchor="middle" font-weight="bold">MOV-101</text>
+                      <text x="450" y="129" fill="#10b981" font-family="monospace" font-size="9" text-anchor="middle" id="mov101-state-txt">OPEN (100%)</text>
+                    </g>
+
+                    <!-- Pipe from MOV-101 into Tank TK-101 -->
+                    <polyline points="470,90 535,90 535,140" fill="none" stroke="#1e293b" stroke-width="8" stroke-linejoin="round"/>
+                    <polyline points="470,90 535,90 535,140" fill="none" stroke="#00d2ff" stroke-width="3" stroke-linejoin="round" id="pipe-inlet-2"/>
+
+                    <!-- Main Storage Tank TK-101 -->
+                    <g class="equip-node" id="svg-tk101" data-asset="TK-101">
+                      <!-- Tank Shell -->
+                      <rect x="480" y="140" width="140" height="210" rx="6" fill="#0e141d" stroke="#475569" stroke-width="2.5" id="tk101-shell"/>
+                      <!-- Liquid Fill (dynamic y & height) -->
+                      <rect x="483" y="218" width="134" height="129" rx="3" fill="rgba(0, 210, 255, 0.28)" id="tk101-liquid"/>
+                      <line x1="483" y1="218" x2="617" y2="218" stroke="#00d2ff" stroke-width="2" id="tk101-meniscus"/>
+
+                      <!-- Level Markers (HH, H, L, LL) -->
+                      <line x1="620" y1="161" x2="630" y2="161" stroke="#ef4444" stroke-width="1.5"/>
+                      <text x="633" y="164" fill="#ef4444" font-family="monospace" font-size="9">HH 90%</text>
+
+                      <line x1="620" y1="182" x2="630" y2="182" stroke="#f59e0b" stroke-width="1.5"/>
+                      <text x="633" y="185" fill="#f59e0b" font-family="monospace" font-size="9">HI 80%</text>
+
+                      <line x1="620" y1="308" x2="630" y2="308" stroke="#f59e0b" stroke-width="1.5"/>
+                      <text x="633" y="311" fill="#f59e0b" font-family="monospace" font-size="9">LO 20%</text>
+
+                      <line x1="620" y1="329" x2="630" y2="329" stroke="#ef4444" stroke-width="1.5"/>
+                      <text x="633" y="332" fill="#ef4444" font-family="monospace" font-size="9">LL 10%</text>
+
+                      <!-- Tank Readout Overlay -->
+                      <rect x="498" y="210" width="104" height="46" rx="4" fill="rgba(11, 15, 20, 0.86)" stroke="#334358"/>
+                      <text x="550" y="226" fill="#93a4b8" font-family="monospace" font-size="10" text-anchor="middle" font-weight="bold">TK-101 LIT</text>
+                      <text x="550" y="246" fill="#00d2ff" font-family="monospace" font-size="15" text-anchor="middle" font-weight="bold" id="svg-tk-level">62.0 %</text>
+                    </g>
+
+                    <!-- Tank Outlet Header to Pumps -->
+                    <polyline points="550,350 550,395 660,395" fill="none" stroke="#1e293b" stroke-width="8" stroke-linejoin="round"/>
+                    <polyline points="550,350 550,395 660,395" fill="none" stroke="#00d2ff" stroke-width="3" stroke-linejoin="round" id="pipe-suction-main"/>
+
+                    <!-- Branch to P-101 (Upper Pump) -->
+                    <polyline points="660,395 660,340 700,340" fill="none" stroke="#1e293b" stroke-width="7"/>
+                    <polyline points="660,395 660,340 700,340" fill="none" stroke="#64748b" stroke-width="2.5" id="pipe-p1-suc"/>
+
+                    <!-- Branch to P-102 (Lower Pump) -->
+                    <polyline points="660,395 660,445 700,445" fill="none" stroke="#1e293b" stroke-width="7"/>
+                    <polyline points="660,395 660,445 700,445" fill="none" stroke="#64748b" stroke-width="2.5" id="pipe-p2-suc"/>
+
+                    <!-- Feed Pump P-101 Symbol -->
+                    <g class="equip-node" id="svg-p101" data-asset="P-101">
+                      <circle cx="722" cy="340" r="20" fill="#121821" stroke="#64748b" stroke-width="2.5" id="p101-body"/>
+                      <polygon points="715,330 734,340 715,350" fill="#64748b" id="p101-impeller"/>
+                      <text x="722" y="313" fill="#e6edf5" font-family="monospace" font-size="10" text-anchor="middle" font-weight="bold">P-101</text>
+                    </g>
+
+                    <!-- Booster Pump P-102 Symbol -->
+                    <g class="equip-node" id="svg-p102" data-asset="P-102">
+                      <circle cx="722" cy="445" r="20" fill="#121821" stroke="#64748b" stroke-width="2.5" id="p102-body"/>
+                      <polygon points="715,435 734,445 715,455" fill="#64748b" id="p102-impeller"/>
+                      <text x="722" y="480" fill="#e6edf5" font-family="monospace" font-size="10" text-anchor="middle" font-weight="bold">P-102</text>
+                    </g>
+
+                    <!-- Discharge Pipes Joining Common Header -->
+                    <polyline points="742,340 795,340 795,395" fill="none" stroke="#1e293b" stroke-width="7"/>
+                    <polyline points="742,340 795,340 795,395" fill="none" stroke="#64748b" stroke-width="2.5" id="pipe-p1-dis"/>
+
+                    <polyline points="742,445 795,445 795,395" fill="none" stroke="#1e293b" stroke-width="7"/>
+                    <polyline points="742,445 795,445 795,395" fill="none" stroke="#64748b" stroke-width="2.5" id="pipe-p2-dis"/>
+
+                    <!-- Common Discharge Header to Plant Distribution -->
+                    <line x1="795" y1="395" x2="900" y2="395" stroke="#1e293b" stroke-width="8"/>
+                    <line x1="795" y1="395" x2="900" y2="395" stroke="#64748b" stroke-width="3" id="pipe-dis-header"/>
+                    <polygon points="896,389 908,395 896,401" fill="#00d2ff"/>
+
+                    <!-- Discharge Pressure & Flow Transmitters (PT-101 / FT-101) -->
+                    <rect x="765" y="195" width="135" height="92" rx="4" fill="#121821" stroke="#334358"/>
+                    <text x="832" y="213" fill="#93a4b8" font-family="monospace" font-size="10" text-anchor="middle" font-weight="bold">DISCHARGE HEADER</text>
+                    <line x1="775" y1="220" x2="890" y2="220" stroke="#243040"/>
+                    <text x="777" y="238" fill="#93a4b8" font-family="monospace" font-size="10">PT-101:</text>
+                    <text x="890" y="238" fill="#00d2ff" font-family="monospace" font-size="11" text-anchor="end" font-weight="bold" id="svg-dis-press">3.85 bar</text>
+                    <text x="777" y="258" fill="#93a4b8" font-family="monospace" font-size="10">FT-101:</text>
+                    <text x="890" y="258" fill="#10b981" font-family="monospace" font-size="11" text-anchor="end" font-weight="bold" id="svg-dis-flow">112.0 m³/h</text>
+                    <text x="777" y="277" fill="#93a4b8" font-family="monospace" font-size="10">IN-FT:</text>
+                    <text x="890" y="277" fill="#93a4b8" font-family="monospace" font-size="10" text-anchor="end" id="svg-in-flow">120.0 m³/h</text>
+                    <line x1="832" y1="287" x2="832" y2="395" stroke="#334358" stroke-dasharray="3 3"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Contextual Control Faceplate Drawer -->
+            <aside class="faceplate" id="faceplate-drawer" aria-label="Asset Control Faceplate">
+              <div class="fp-header">
+                <div>
+                  <div class="fp-tag" id="fp-tag-id">CB-101</div>
+                  <div class="fp-desc" id="fp-tag-desc">Main 415V Incomer Air Circuit Breaker</div>
+                </div>
+                <span class="badge badge-good" id="fp-status-badge">CLOSED</span>
+              </div>
+
+              <!-- Mode Selector -->
+              <div class="fp-section">
+                <div class="fp-label">Control Mode &amp; Supervisory Authority</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+                  <button class="btn btn-active" id="fp-mode-auto">AUTO (SCADA)</button>
+                  <button class="btn" id="fp-mode-man">MANUAL</button>
+                </div>
+              </div>
+
+              <!-- Operator Primary Commands -->
+              <div class="fp-section">
+                <div class="fp-label">Operator Commands</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;" id="fp-cmd-buttons">
+                  <button class="btn btn-green" id="fp-btn-start">CLOSE / START</button>
+                  <button class="btn btn-red" id="fp-btn-stop">OPEN / STOP</button>
+                </div>
+                <button class="btn btn-amber" id="fp-btn-reset" style="width:100%; display:none;">RESET LATCHED TRIP</button>
+              </div>
+
+              <!-- Analog Setpoint Slider (Dynamic per Asset) -->
+              <div class="fp-section" id="fp-setpoint-section">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span class="fp-label" id="fp-sp-label">VFD Speed Reference</span>
+                  <span class="kpi-val" style="color:var(--accent-cyan);" id="fp-sp-val">42.0 Hz</span>
+                </div>
+                <input type="range" id="fp-sp-slider" min="20" max="50" step="0.5" value="42" />
+              </div>
+
+              <!-- Live Telemetry Readouts -->
+              <div class="fp-section">
+                <div class="fp-label">Live Tag Telemetry</div>
+                <div class="fp-grid-2" id="fp-telemetry-grid"></div>
+              </div>
+
+              <!-- Interlock Permissives Checklist -->
+              <div class="fp-section">
+                <div class="fp-label">Interlock Permissives</div>
+                <div style="display:flex; flex-direction:column; gap:5px;" id="fp-permissives-list"></div>
+              </div>
+
+              <!-- Operator Training / Fault Injection -->
+              <div class="fp-section">
+                <div class="fp-label" style="color:#fbbf24;">Fault Injection &amp; Testing</div>
+                <div style="display:flex; flex-direction:column; gap:6px;" id="fp-fault-actions"></div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             SCREEN 2: ISA-18.2 ALARM SUMMARY & EVENT HISTORIAN
+             ================================================================== -->
+        <section class="screen" id="screen-alarms">
+          <div class="panel-card">
+            <div class="panel-header">
+              <div class="panel-title">ISA-18.2 ALARM SUMMARY &amp; LIFECYCLE MANAGEMENT</div>
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button class="btn btn-active" data-alm-filter="ALL">ALL</button>
+                <button class="btn" data-alm-filter="UNACK">UNACK ONLY</button>
+                <button class="btn" data-alm-filter="ACTIVE">ACTIVE ONLY</button>
+                <button class="btn btn-amber" id="btn-alm-screen-ack">ACK ALL UNACK</button>
+                <button class="btn btn-cyan" id="btn-reset-all-trips">RESET ALL TRIPS</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="scada-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>Priority</th>
+                    <th>Lifecycle State</th>
+                    <th>Tag ID</th>
+                    <th>Condition Description</th>
+                    <th>Value / Limit</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="alarm-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="panel-card">
+            <div class="panel-header">
+              <div class="panel-title">OPERATOR AUDIT &amp; SEQUENCE OF EVENTS (SOE) LOG</div>
+              <button class="btn" id="btn-clear-soe">CLEAR LOG</button>
+            </div>
+            <div class="table-wrap" style="max-height: 270px; overflow-y: auto;">
+              <table class="scada-table">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Category</th>
+                    <th>Source / Tag</th>
+                    <th>Event Message</th>
+                  </tr>
+                </thead>
+                <tbody id="soe-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             SCREEN 3: REAL-TIME MULTI-PEN TRENDS & HISTORIAN
+             ================================================================== -->
+        <section class="screen" id="screen-trends">
+          <div class="panel-card">
+            <div class="panel-header">
+              <div class="panel-title">PROCESS &amp; ELECTRICAL REAL-TIME HISTORIAN TREND</div>
+              <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                <button class="btn" id="btn-trend-pause">PAUSE CHART</button>
+                <select id="trend-window-select" class="unit-select">
+                  <option value="60">Window: Last 60 Samples</option>
+                  <option value="120" selected>Window: Last 120 Samples</option>
+                  <option value="240">Window: Last 240 Samples</option>
+                </select>
+                <button class="btn btn-cyan" id="btn-export-csv">EXPORT CSV</button>
+              </div>
+            </div>
+
+            <div class="panel-body" style="display:flex; flex-direction:column; gap:12px;">
+              <div class="pen-toggles" id="pen-toggles"></div>
+
+              <div class="trend-canvas-wrap">
+                <canvas id="trend-canvas"></canvas>
+              </div>
+
+              <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-family:var(--font-mono); font-size:11px; color:var(--text-secondary);">
+                <span id="trend-cursor-readout">Hover or tap chart to inspect historical sample values.</span>
+                <span id="trend-sample-count">BUFFER: 0 SAMPLES</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             SCREEN 4: MODBUS TCP / RTU REGISTER & TAG INSPECTOR
+             ================================================================== -->
+        <section class="screen" id="screen-modbus">
+          <div class="panel-card">
+            <div class="panel-header">
+              <div class="panel-title">MODBUS TCP/IP SLAVE SIMULATOR &amp; I/O REGISTER MAP</div>
+              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <span class="fp-label">32-Bit Word Order:</span>
+                <button class="btn btn-active" id="btn-endian-abcd">ABCD (Big-Endian)</button>
+                <button class="btn" id="btn-endian-cdab">CDAB (Word-Swapped)</button>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="modbus-grid">
+                <!-- Coils Table -->
+                <div class="panel-card">
+                  <div class="panel-header">
+                    <div class="panel-title">DISCRETE COILS (FC 01 READ / FC 05 WRITE)</div>
+                  </div>
+                  <div class="table-wrap">
+                    <table class="scada-table">
+                      <thead>
+                        <tr>
+                          <th>Addr</th>
+                          <th>Mapped Tag</th>
+                          <th>State</th>
+                          <th>FC 05 Test</th>
+                        </tr>
+                      </thead>
+                      <tbody id="modbus-coils-body"></tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- Holding Registers Table -->
+                <div class="panel-card">
+                  <div class="panel-header">
+                    <div class="panel-title">HOLDING REGISTERS (FC 03 READ / FC 06 WRITE)</div>
+                  </div>
+                  <div class="table-wrap">
+                    <table class="scada-table">
+                      <thead>
+                        <tr>
+                          <th>Reg</th>
+                          <th>Tag / Encoding</th>
+                          <th>Hex</th>
+                          <th>Uint16</th>
+                          <th>Decoded Eng.</th>
+                          <th>Write Raw</th>
+                        </tr>
+                      </thead>
+                      <tbody id="modbus-regs-body"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script>
+    /* ==========================================================================
+       VANGUARD SCADA RUNTIME ENGINE
+       1. IEEE-754 / Int16 / Bitfield Modbus TCP/RTU Slave Engine
+       2. Deterministic Physics & PLC Interlock Simulation
+       3. ISA-18.2 Alarm Lifecycle & SOE Historian
+       4. Multi-Screen HMI Rendering, SVG Mimic & HTML5 Canvas Trend Chart
+       ========================================================================== */
+    (function () {
+      "use strict";
+
+      // ------------------------------------------------------------------------
+      // 1. MODBUS ENCODING & MOCK SLAVE ENGINE
+      // ------------------------------------------------------------------------
+      function float32ToRegisters(value, highWordFirst = true) {
+        const buf = new ArrayBuffer(4);
+        const view = new DataView(buf);
+        view.setFloat32(0, value, false);
+        const hi = view.getUint16(0, false);
+        const lo = view.getUint16(2, false);
+        return highWordFirst ? [hi, lo] : [lo, hi];
+      }
+
+      function registersToFloat32(regA, regB, highWordFirst = true) {
+        const hi = highWordFirst ? regA : regB;
+        const lo = highWordFirst ? regB : regA;
+        const buf = new ArrayBuffer(4);
+        const view = new DataView(buf);
+        view.setUint16(0, hi, false);
+        view.setUint16(2, lo, false);
+        return view.getFloat32(0, false);
+      }
+
+      function int16ToRegister(value) {
+        const clamped = Math.max(-32768, Math.min(32767, Math.trunc(value)));
+        const buf = new ArrayBuffer(2);
+        const view = new DataView(buf);
+        view.setInt16(0, clamped, false);
+        return view.getUint16(0, false);
+      }
+
+      function registerToInt16(raw) {
+        const buf = new ArrayBuffer(2);
+        const view = new DataView(buf);
+        view.setUint16(0, raw & 0xffff, false);
+        return view.getInt16(0, false);
+      }
+
+      class MockModbusSlave {
+        constructor(coilSize = 16, regSize = 32) {
+          this.coils = new Uint8Array(coilSize);
+          this.holdingRegisters = new Uint16Array(regSize);
+          this.txCount = 0;
+          this.errCount = 0;
+        }
+        writeCoil(addr, state) {
+          if (addr < 0 || addr >= this.coils.length) return false;
+          this.coils[addr] = state ? 1 : 0;
+          this.txCount++;
+          return true;
+        }
+        writeRegister(addr, val) {
+          if (addr < 0 || addr >= this.holdingRegisters.length) return false;
+          this.holdingRegisters[addr] = Math.max(0, Math.min(65535, Math.trunc(val)));
+          this.txCount++;
+          return true;
+        }
+      }
+
+      const modbus = new MockModbusSlave(16, 32);
+
+      // ------------------------------------------------------------------------
+      // 2. CENTRALIZED PLANT & SCADA STATE
+      // ------------------------------------------------------------------------
+      const state = {
+        simSpeed: 1,
+        commOnline: true,
+        highWordFirst: true, // ABCD vs CDAB for Modbus Float32 inspection
+        selectedAsset: "CB-101",
+        alarmFilter: "ALL",
+        trendPaused: false,
+        trendWindow: 120,
+        uptimeSec: 0,
+        scanIntervalMs: 250,
+
+        // Process & Electrical Tags
+        tags: {
+          gridKv: 13.8,
+          busVoltage: 415.0,
+          busFreq: 50.0,
+
+          cb101Closed: true,
+          cb101Auto: true,
+          cb101Trip: false,
+
+          mov101Open: true,
+          mov101Auto: true,
+          mov101Pos: 100.0, // 0..100%
+
+          tk101Level: 62.0, // 0..100%
+          tk101HighSp: 80.0,
+          tk101SensorDrift: false,
+          inletFlow: 120.0, // m3/h
+          demandOutflow: 95.0, // m3/h
+
+          // Pump P-101 (Primary Feed Pump)
+          p101Auto: true,
+          p101Cmd: true,
+          p101Running: true,
+          p101Trip: false,
+          p101HzSp: 42.0,
+          p101Current: 32.4,
+          p101Temp: 54.0,
+          p101Hours: 1428.4,
+
+          // Pump P-102 (Booster Pump)
+          p102Auto: true,
+          p102Cmd: false,
+          p102Running: false,
+          p102Trip: false,
+          p102HzSp: 45.0,
+          p102Current: 0.0,
+          p102Temp: 34.0,
+          p102Hours: 892.1,
+
+          // Header Totals
+          dischargePressure: 3.85,
+          dischargeFlow: 112.0,
+          totalCurrent: 32.4,
+          totalKw: 21.8
+        },
+
+        // ISA-18.2 Alarm Definitions & States
+        alarms: {
+          COMM_LOSS: {
+            id: "COMM_LOSS",
+            tag: "PLC-01",
+            priority: "CRITICAL",
+            desc: "Modbus TCP/RTU Polling Timeout - Stale Field Data",
+            limitText: "TIMEOUT > 500ms",
+            active: false,
+            acked: true,
+            timestamp: null,
+            valText: "TIMEOUT"
+          },
+          CB101_TRIP: {
+            id: "CB101_TRIP",
+            tag: "CB-101",
+            priority: "CRITICAL",
+            desc: "Main 415V Incomer Breaker Trip / Bus Undervoltage",
+            limitText: "< 360 V",
+            active: false,
+            acked: true,
+            timestamp: null,
+            valText: "0.0 V"
+          },
+          TK101_HH: {
+            id: "TK101_HH",
+            tag: "TK-101",
+            priority: "CRITICAL",
+            desc: "Storage Tank High-High Level Overflow Risk",
+            limitText: ">= 90.0 %",
+            active: false,
+            acked: true,
+            timestamp: null,
+            valText: ""
+          },
+          TK101_HI: {
+            id: "TK101_HI",
+            tag: "TK-101",
+            priority: "HIGH",
+            desc: "Storage Tank High Level Warning",
+            limitText: ">= 80.0 %",
+            active: false,
+            acked: true,
+            timestamp: null,
+            valText: ""
+          },
+          TK101_LO: {
+            id: "TK101_LO",
+            tag: "TK-101",
+            priority: "HIGH",
+            desc: "Storage Tank Low Level Warning",
+            limitText: "<= 20.0 %",
+            active: false,
+            acked: true,
+            timestamp: null,
+            valText: ""
+          },
+          TK101_LL: {
+            id: "TK101_LL",
+            tag: "TK-101",
+            priority: "CRITICAL",
+            desc: "Storage Tank Low-Low Level - Dry Run Interlock",
+            limitText: "<= 10.0 %",
+            active: false,
+            acked: true,
+            timestamp: null,
+            valText: ""
+          },
+          P101_OVL: {
+            id: "P101_OVL",
+            tag: "P-101",
+            priority: "CRITICAL",
+            desc: "Feed Pump P-101 Thermal Overload / Winding Overtemp",
+            limitText: "> 95 °C / OVL",
+            active: false,
+            acked: true,
+            timestamp: null,
+            valText: ""
+          },
+          P102_OVL: {
+            id: "P102_OVL",
+            tag: "P-102",
+            priority: "CRITICAL",
+            desc: "Booster Pump P-102 Thermal Overload / Winding Overtemp",
+            limitText: "> 95 °C / OVL",
+            active: false,
+            acked: true,
+            timestamp: null,
+            valText: ""
+          },
+          HDR_PRESS_LO: {
+            id: "HDR_PRESS_LO",
+            tag: "PT-101",
+            priority: "MEDIUM",
+            desc: "Discharge Header Low Pressure (< 2.20 bar)",
+            limitText: "< 2.20 bar",
+            active: false,
+            acked: true,
+            timestamp: null,
+            valText: ""
+          }
+        },
+
+        soeLog: [],
+        history: [] // Time-series samples for trend chart
+      };
+
+      // Trend Pen Configuration
+      const TREND_PENS = [
+        { key: "tk101Level", label: "TK-101 Level (%)", color: "#00d2ff", min: 0, max: 100, enabled: true },
+        { key: "dischargePressure", label: "Header Press (bar)", color: "#10b981", min: 0, max: 6, enabled: true },
+        { key: "totalCurrent", label: "Feeder Load (A)", color: "#f59e0b", min: 0, max: 100, enabled: true },
+        { key: "busVoltage", label: "Bus Voltage (V)", color: "#a855f7", min: 350, max: 440, enabled: false },
+        { key: "p101Temp", label: "P-101 Temp (°C)", color: "#ef4444", min: 20, max: 110, enabled: true }
+      ];
+
+      // ------------------------------------------------------------------------
+      // 3. HELPER FUNCTIONS: LOGGING, TOASTS, FORMATTING
+      // ------------------------------------------------------------------------
+      function nowTimeStr() {
+        return new Date().toTimeString().split(" ")[0];
+      }
+
+      function formatDuration(sec) {
+        const s = Math.floor(sec);
+        const h = String(Math.floor(s / 3600)).padStart(2, "0");
+        const m = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+        const r = String(s % 60).padStart(2, "0");
+        return `${h}:${m}:${r}`;
+      }
+
+      function logSOE(category, source, message) {
+        state.soeLog.unshift({
+          time: nowTimeStr(),
+          category,
+          source,
+          message
+        });
+        if (state.soeLog.length > 150) state.soeLog.pop();
+      }
+
+      function showToast(msg, level = "info") {
+        const container = document.getElementById("toast-container");
+        const el = document.createElement("div");
+        el.className = `toast ${level === "warn" ? "warn" : level === "err" ? "err" : ""}`;
+        el.textContent = `[${nowTimeStr()}] ${msg}`;
+        container.appendChild(el);
+        setTimeout(() => {
+          el.style.opacity = "0";
+          el.style.transition = "opacity 0.25s";
+          setTimeout(() => el.remove(), 260);
+        }, 3200);
+      }
+
+      // ------------------------------------------------------------------------
+      // 4. DETERMINISTIC PLC / PROCESS SIMULATION STEP
+      // ------------------------------------------------------------------------
+      function evaluateAlarm(alarmObj, condition, currentValText) {
+        alarmObj.valText = currentValText;
+        if (condition && !alarmObj.active) {
+          alarmObj.active = true;
+          alarmObj.acked = false;
+          alarmObj.timestamp = nowTimeStr();
+          logSOE("ALARM", alarmObj.tag, `RAISED [${alarmObj.priority}]: ${alarmObj.desc} (${currentValText})`);
+        } else if (!condition && alarmObj.active) {
+          alarmObj.active = false;
+          logSOE("ALARM", alarmObj.tag, `CLEARED: ${alarmObj.desc}`);
+        }
+      }
+
+      function syncModbusRegisters() {
+        const t = state.tags;
+        // Coils
+        modbus.writeCoil(0, t.cb101Closed);
+        modbus.writeCoil(1, t.mov101Open);
+        modbus.writeCoil(2, t.p101Cmd);
+        modbus.writeCoil(3, t.p101Running);
+        modbus.writeCoil(4, t.p102Cmd);
+        modbus.writeCoil(5, t.p102Running);
+        modbus.writeCoil(6, t.p101Trip || t.p102Trip || t.cb101Trip);
+
+        // Status Bitfield Word (Reg 0)
+        let statusWord = 0;
+        if (t.cb101Closed) statusWord |= (1 << 0);
+        if (t.mov101Open) statusWord |= (1 << 1);
+        if (t.p101Running) statusWord |= (1 << 2);
+        if (t.p102Running) statusWord |= (1 << 3);
+        if (t.p101Trip) statusWord |= (1 << 4);
+        if (t.p102Trip) statusWord |= (1 << 5);
+        if (state.alarms.TK101_HI.active) statusWord |= (1 << 6);
+        if (state.alarms.TK101_LO.active) statusWord |= (1 << 7);
+        modbus.writeRegister(0, statusWord);
+
+        // Scaled Int16 Registers
+        modbus.writeRegister(1, Math.round(t.tk101Level * 100));         // 0.01 %
+        modbus.writeRegister(2, Math.round(t.p101HzSp * 10));            // 0.1 Hz
+        modbus.writeRegister(3, Math.round(t.p102HzSp * 10));            // 0.1 Hz
+        modbus.writeRegister(4, int16ToRegister(Math.round(t.p101Temp * 10))); // Signed 0.1 C
+        modbus.writeRegister(5, int16ToRegister(Math.round(t.p102Temp * 10))); // Signed 0.1 C
+
+        // IEEE-754 Float32 Pairs (2 registers each)
+        const [vHi, vLo] = float32ToRegisters(t.busVoltage, state.highWordFirst);
+        modbus.writeRegister(10, vHi);
+        modbus.writeRegister(11, vLo);
+
+        const [pHi, pLo] = float32ToRegisters(t.dischargePressure, state.highWordFirst);
+        modbus.writeRegister(12, pHi);
+        modbus.writeRegister(13, pLo);
+
+        const [fHi, fLo] = float32ToRegisters(t.dischargeFlow, state.highWordFirst);
+        modbus.writeRegister(14, fHi);
+        modbus.writeRegister(15, fLo);
+      }
+
+      function stepSimulation(rawDt) {
+        const dt = rawDt * state.simSpeed;
+        state.uptimeSec += rawDt;
+
+        // If communication link is down, SCADA cannot poll new values
+        evaluateAlarm(state.alarms.COMM_LOSS, !state.commOnline, state.commOnline ? "ONLINE" : "TIMEOUT");
+        if (!state.commOnline) {
+          modbus.errCount++;
+          return;
+        }
+
+        if (dt <= 0) return;
+
+        const t = state.tags;
+        const noise = () => (Math.random() - 0.5) * 0.4;
+
+        // 1. Electrical Bus & Breaker Logic
+        if (t.cb101Trip) t.cb101Closed = false;
+        if (t.cb101Closed) {
+          t.busVoltage = +(415.0 + noise() * 2.2).toFixed(1);
+          t.busFreq = +(50.0 + noise() * 0.05).toFixed(2);
+        } else {
+          t.busVoltage = 0.0;
+          t.busFreq = 0.0;
+        }
+        const busEnergized = t.busVoltage > 360;
+
+        // 2. Auto Level Control on MOV-101 when in AUTO mode
+        if (t.mov101Auto) {
+          if (t.tk101Level >= t.tk101HighSp) {
+            t.mov101Open = false;
+          } else if (t.tk101Level <= t.tk101HighSp - 12) {
+            t.mov101Open = true;
+          }
+        }
+
+        // Valve Stroke Travel (25% per sec)
+        const targetPos = t.mov101Open ? 100 : 0;
+        if (t.mov101Pos < targetPos) t.mov101Pos = Math.min(100, t.mov101Pos + 35 * dt);
+        if (t.mov101Pos > targetPos) t.mov101Pos = Math.max(0, t.mov101Pos - 35 * dt);
+
+        // 3. Auto Duty/Assist Pump Control when in AUTO mode
+        if (t.p101Auto) {
+          t.p101Cmd = busEnergized && !t.p101Trip && t.tk101Level > 12;
+        }
+        if (t.p102Auto) {
+          // Booster kicks in when level > 35% and demand is high or P-101 is tripped
+          const needAssist = t.p101Trip || t.tk101Level > 74;
+          t.p102Cmd = busEnergized && !t.p102Trip && t.tk101Level > 15 && needAssist;
+        }
+
+        // 4. Pump Interlocks & Motor Physics
+        const lowLevelCutout = t.tk101Level <= 10.0;
+        if (lowLevelCutout) {
+          t.p101Cmd = false;
+          t.p102Cmd = false;
+        }
+
+        t.p101Running = busEnergized && t.p101Cmd && !t.p101Trip && !lowLevelCutout;
+        t.p102Running = busEnergized && t.p102Cmd && !t.p102Trip && !lowLevelCutout;
+
+        // Motor Current & Thermal Heating/Cooling
+        if (t.p101Running) {
+          const loadFactor = t.p101HzSp / 50.0;
+          t.p101Current = +(12 + 26 * loadFactor + noise()).toFixed(1);
+          const targetTemp = 48 + 32 * loadFactor;
+          t.p101Temp += (targetTemp - t.p101Temp) * 0.08 * dt;
+          t.p101Hours += dt / 3600;
+        } else {
+          t.p101Current = 0.0;
+          t.p101Temp += (31.0 - t.p101Temp) * 0.05 * dt;
+        }
+
+        if (t.p102Running) {
+          const loadFactor = t.p102HzSp / 50.0;
+          t.p102Current = +(14 + 28 * loadFactor + noise()).toFixed(1);
+          const targetTemp = 50 + 34 * loadFactor;
+          t.p102Temp += (targetTemp - t.p102Temp) * 0.08 * dt;
+          t.p102Hours += dt / 3600;
+        } else {
+          t.p102Current = 0.0;
+          t.p102Temp += (31.0 - t.p102Temp) * 0.05 * dt;
+        }
+
+        // Thermal Overload Auto-Trip > 95 °C
+        if (t.p101Temp > 95 && !t.p101Trip) {
+          t.p101Trip = true;
+          t.p101Running = false;
+          logSOE("TRIP", "P-101", "Thermal overload trip activated (> 95°C)");
+        }
+        if (t.p102Temp > 95 && !t.p102Trip) {
+          t.p102Trip = true;
+          t.p102Running = false;
+          logSOE("TRIP", "P-102", "Thermal overload trip activated (> 95°C)");
+        }
+
+        // 5. Hydraulic Flow & Tank Level Integration
+        t.inletFlow = +((t.mov101Pos / 100) * 145.0).toFixed(1);
+        const p1Flow = t.p101Running ? (t.p101HzSp / 50) * 115.0 : 0;
+        const p2Flow = t.p102Running ? (t.p102HzSp / 50) * 125.0 : 0;
+        t.dischargeFlow = +(p1Flow + p2Flow + (p1Flow + p2Flow > 0 ? noise() * 1.5 : 0)).toFixed(1);
+
+        // Tank net rate (% per second scaled for engaging operator observation)
+        const netM3h = t.inletFlow - t.dischargeFlow;
+        const deltaLevel = (netM3h / 85.0) * dt;
+        const driftOffset = t.tk101SensorDrift ? 0.35 * dt : 0;
+        t.tk101Level = Math.max(0, Math.min(100, +(t.tk101Level + deltaLevel + driftOffset).toFixed(2)));
+
+        // Discharge Header Pressure
+        if (t.dischargeFlow > 1) {
+          t.dischargePressure = +(2.1 + (t.dischargeFlow / 115.0) * 1.85 + noise() * 0.05).toFixed(2);
+        } else {
+          t.dischargePressure = +(0.35 + (t.tk101Level / 100) * 0.45).toFixed(2);
+        }
+
+        // Electrical Totals
+        t.totalCurrent = +(t.p101Current + t.p102Current).toFixed(1);
+        t.totalKw = +((Math.sqrt(3) * t.busVoltage * t.totalCurrent * 0.86) / 1000).toFixed(1);
+
+        // 6. Evaluate ISA-18.2 Alarms with Deadband Hysteresis
+        evaluateAlarm(state.alarms.CB101_TRIP, !busEnergized || t.cb101Trip, `${t.busVoltage.toFixed(1)} V`);
+
+        const hhCond = state.alarms.TK101_HH.active ? t.tk101Level >= 88.0 : t.tk101Level >= 90.0;
+        evaluateAlarm(state.alarms.TK101_HH, hhCond, `${t.tk101Level.toFixed(1)} %`);
+
+        const hiCond = state.alarms.TK101_HI.active ? t.tk101Level >= 78.0 : t.tk101Level >= 80.0;
+        evaluateAlarm(state.alarms.TK101_HI, hiCond, `${t.tk101Level.toFixed(1)} %`);
+
+        const loCond = state.alarms.TK101_LO.active ? t.tk101Level <= 22.0 : t.tk101Level <= 20.0;
+        evaluateAlarm(state.alarms.TK101_LO, loCond, `${t.tk101Level.toFixed(1)} %`);
+
+        const llCond = state.alarms.TK101_LL.active ? t.tk101Level <= 12.0 : t.tk101Level <= 10.0;
+        evaluateAlarm(state.alarms.TK101_LL, llCond, `${t.tk101Level.toFixed(1)} %`);
+
+        evaluateAlarm(state.alarms.P101_OVL, t.p101Trip, `${t.p101Temp.toFixed(1)} °C`);
+        evaluateAlarm(state.alarms.P102_OVL, t.p102Trip, `${t.p102Temp.toFixed(1)} °C`);
+        evaluateAlarm(state.alarms.HDR_PRESS_LO, t.dischargePressure < 2.2, `${t.dischargePressure.toFixed(2)} bar`);
+
+        // 7. Record Historian Sample & Sync Modbus Registers
+        state.history.push({
+          time: nowTimeStr(),
+          tk101Level: t.tk101Level,
+          dischargePressure: t.dischargePressure,
+          totalCurrent: t.totalCurrent,
+          busVoltage: t.busVoltage,
+          p101Temp: +t.p101Temp.toFixed(1)
+        });
+        if (state.history.length > 360) state.history.shift();
+
+        syncModbusRegisters();
+      }
+
+      // ------------------------------------------------------------------------
+      // 5. OPERATOR COMMAND HANDLERS
+      // ------------------------------------------------------------------------
+      function acknowledgeAlarm(id) {
+        const alm = state.alarms[id];
+        if (!alm || alm.acked) return;
+        alm.acked = true;
+        logSOE("ACK", alm.tag, `Operator acknowledged alarm: ${alm.desc}`);
+      }
+
+      function acknowledgeAllAlarms() {
+        let count = 0;
+        Object.values(state.alarms).forEach((alm) => {
+          if (!alm.acked) {
+            alm.acked = true;
+            count++;
+          }
+        });
+        if (count > 0) {
+          logSOE("ACK", "OPERATOR", `Bulk acknowledged ${count} alarm(s)`);
+          showToast(`Acknowledged ${count} alarm(s)`);
+        }
+      }
+
+      function resetAllTrips() {
+        const t = state.tags;
+        t.cb101Trip = false;
+        t.p101Trip = false;
+        t.p102Trip = false;
+        if (t.p101Temp > 85) t.p101Temp = 65;
+        if (t.p102Temp > 85) t.p102Temp = 65;
+        logSOE("RESET", "OPERATOR", "Reset all latched breaker/motor trips");
+        showToast("All latched trips reset");
+      }
+
+      function commandAsset(assetId, action) {
+        if (!state.commOnline) {
+          showToast("Command rejected: PLC communication link offline", "err");
+          return;
+        }
+        const t = state.tags;
+
+        if (assetId === "CB-101") {
+          if (action === "START") {
+            if (t.cb101Trip) {
+              showToast("Interlock blocked: Reset CB-101 trip before closing", "err");
+              return;
+            }
+            t.cb101Closed = true;
+            logSOE("CMD", "CB-101", "Operator CLOSED Main Breaker CB-101");
+          } else if (action === "STOP") {
+            t.cb101Closed = false;
+            logSOE("CMD", "CB-101", "Operator OPENED Main Breaker CB-101");
+          } else if (action === "RESET") {
+            t.cb101Trip = false;
+            logSOE("RESET", "CB-101", "CB-101 trip latch reset");
+          }
+        }
+
+        if (assetId === "MOV-101") {
+          t.mov101Auto = false;
+          if (action === "START") {
+            t.mov101Open = true;
+            logSOE("CMD", "MOV-101", "Operator commanded MOV-101 OPEN (Manual)");
+          } else if (action === "STOP") {
+            t.mov101Open = false;
+            logSOE("CMD", "MOV-101", "Operator commanded MOV-101 CLOSE (Manual)");
+          }
+        }
+
+        if (assetId === "P-101") {
+          if (action === "RESET") {
+            t.p101Trip = false;
+            if (t.p101Temp > 85) t.p101Temp = 62;
+            logSOE("RESET", "P-101", "P-101 thermal overload reset");
+            return;
+          }
+          t.p101Auto = false;
+          if (action === "START") {
+            if (t.busVoltage < 360 || t.p101Trip || t.tk101Level <= 10) {
+              showToast("Permissive failed: Check Bus Voltage, Trip & Tank Level > 10%", "err");
+              return;
+            }
+            t.p101Cmd = true;
+            logSOE("CMD", "P-101", "Operator STARTED Feed Pump P-101 (Manual)");
+          } else if (action === "STOP") {
+            t.p101Cmd = false;
+            logSOE("CMD", "P-101", "Operator STOPPED Feed Pump P-101 (Manual)");
+          }
+        }
+
+        if (assetId === "P-102") {
+          if (action === "RESET") {
+            t.p102Trip = false;
+            if (t.p102Temp > 85) t.p102Temp = 62;
+            logSOE("RESET", "P-102", "P-102 thermal overload reset");
+            return;
+          }
+          t.p102Auto = false;
+          if (action === "START") {
+            if (t.busVoltage < 360 || t.p102Trip || t.tk101Level <= 10) {
+              showToast("Permissive failed: Check Bus Voltage, Trip & Tank Level > 10%", "err");
+              return;
+            }
+            t.p102Cmd = true;
+            logSOE("CMD", "P-102", "Operator STARTED Booster Pump P-102 (Manual)");
+          } else if (action === "STOP") {
+            t.p102Cmd = false;
+            logSOE("CMD", "P-102", "Operator STOPPED Booster Pump P-102 (Manual)");
+          }
+        }
+      }
+
+      // ------------------------------------------------------------------------
+      // 6. UI RENDERING: HEADER, MIMIC SVG, FACEPLATE, TABLES & TREND CANVAS
+      // ------------------------------------------------------------------------
+      function renderTopBarAndBanner() {
+        const t = state.tags;
+        document.getElementById("sys-clock").textContent = nowTimeStr();
+        document.getElementById("footer-uptime").textContent = `UPTIME: ${formatDuration(state.uptimeSec)}`;
+
+        const alarmList = Object.values(state.alarms);
+        const unackAlarms = alarmList.filter((a) => !a.acked);
+        const unackCount = unackAlarms.length;
+
+        document.getElementById("kpi-unack-count").textContent = String(unackCount);
+        const alarmPill = document.getElementById("kpi-alarm-pill");
+        alarmPill.classList.toggle("alarm-active", unackCount > 0);
+
+        const navBadge = document.getElementById("nav-alarm-badge");
+        navBadge.style.display = unackCount > 0 ? "inline-block" : "none";
+        navBadge.textContent = String(unackCount);
+
+        document.getElementById("kpi-bus-v").textContent = `${t.busVoltage.toFixed(1)} V`;
+        document.getElementById("kpi-load").textContent = `${t.totalCurrent.toFixed(1)} A / ${t.totalKw.toFixed(1)} kW`;
+
+        const linkEl = document.getElementById("kpi-link");
+        const scanLed = document.getElementById("scan-led");
+        const scanLabel = document.getElementById("scan-label");
+        const commBtn = document.getElementById("btn-comm-toggle");
+
+        if (state.commOnline) {
+          linkEl.textContent = "ONLINE";
+          linkEl.style.color = "var(--state-run)";
+          scanLed.classList.remove("offline");
+          scanLabel.textContent = `SCAN: ${state.scanIntervalMs}ms | POLL: OK`;
+          commBtn.textContent = "LINK: ONLINE";
+          commBtn.className = "btn btn-green";
+        } else {
+          linkEl.textContent = "TIMEOUT";
+          linkEl.style.color = "var(--alm-crit)";
+          scanLed.classList.add("offline");
+          scanLabel.textContent = "SCAN: STALE | POLL: ERR";
+          commBtn.textContent = "LINK: TIMEOUT";
+          commBtn.className = "btn btn-red";
+        }
+
+        // Top Alarm Banner
+        const banner = document.getElementById("alarm-banner");
+        const bannerSev = document.getElementById("banner-sev");
+        const bannerText = document.getElementById("banner-text");
+        const bannerAckBtn = document.getElementById("btn-banner-ack");
+
+        if (unackCount > 0) {
+          const latest = unackAlarms[0];
+          banner.classList.add("has-unack");
+          bannerSev.className = `badge ${latest.priority === "CRITICAL" ? "badge-crit" : "badge-high"} blink-text`;
+          bannerSev.textContent = latest.priority;
+          bannerText.style.color = "#f8fafc";
+          bannerText.textContent = `[${latest.timestamp}] ${latest.tag}: ${latest.desc} (${latest.valText})`;
+          bannerAckBtn.disabled = false;
+          bannerAckBtn.dataset.alarmId = latest.id;
+        } else {
+          banner.classList.remove("has-unack");
+          bannerSev.className = "badge badge-norm";
+          bannerSev.textContent = "NORMAL";
+          bannerText.style.color = "var(--text-secondary)";
+          bannerText.textContent = "No unacknowledged process or electrical alarms.";
+          bannerAckBtn.disabled = true;
+        }
+      }
+
+      function renderMimicSVG() {
+        const t = state.tags;
+        const busEnergized = t.busVoltage > 360;
+        const cyan = "#00d2ff";
+        const green = "#10b981";
+        const red = "#ef4444";
+        const muted = "#64748b";
+
+        // CB-101 Blade & Busbar
+        const blade = document.getElementById("cb101-blade");
+        const cbTxt = document.getElementById("cb101-state-txt");
+        if (t.cb101Trip) {
+          blade.setAttribute("x2", "183");
+          blade.setAttribute("y2", "174");
+          blade.setAttribute("stroke", red);
+          cbTxt.textContent = "TRIPPED";
+          cbTxt.setAttribute("fill", red);
+        } else if (t.cb101Closed) {
+          blade.setAttribute("x2", "165");
+          blade.setAttribute("y2", "196");
+          blade.setAttribute("stroke", green);
+          cbTxt.textContent = "CLOSED";
+          cbTxt.setAttribute("fill", green);
+        } else {
+          blade.setAttribute("x2", "181");
+          blade.setAttribute("y2", "176");
+          blade.setAttribute("stroke", muted);
+          cbTxt.textContent = "OPEN";
+          cbTxt.setAttribute("fill", muted);
+        }
+
+        const busColor = busEnergized ? cyan : muted;
+        document.getElementById("line-cb-bus").setAttribute("stroke", busColor);
+        document.getElementById("main-busbar").setAttribute("fill", busColor);
+        document.getElementById("fdr1-top").setAttribute("stroke", busColor);
+        document.getElementById("fdr2-top").setAttribute("stroke", busColor);
+        document.getElementById("svg-bus-label").textContent =
+          `415V MAIN BUS: ${t.busVoltage.toFixed(1)} V | ${t.busFreq.toFixed(2)} Hz`;
+        document.getElementById("svg-bus-label").setAttribute("fill", busColor);
+
+        // Motors M1 / M2
+        const m1Color = t.p101Trip ? red : t.p101Running ? green : muted;
+        document.getElementById("fdr1-bot").setAttribute("stroke", m1Color);
+        document.getElementById("m101-circle").setAttribute("stroke", m1Color);
+        document.getElementById("svg-m1-amp").textContent =
+          `${t.p101Current.toFixed(1)} A | ${t.p101Running ? t.p101HzSp.toFixed(1) : "0.0"} Hz`;
+        document.getElementById("svg-m1-temp").textContent = `TEMP: ${t.p101Temp.toFixed(1)} °C`;
+
+        const m2Color = t.p102Trip ? red : t.p102Running ? green : muted;
+        document.getElementById("fdr2-bot").setAttribute("stroke", m2Color);
+        document.getElementById("m102-circle").setAttribute("stroke", m2Color);
+        document.getElementById("svg-m2-amp").textContent =
+          `${t.p102Current.toFixed(1)} A | ${t.p102Running ? t.p102HzSp.toFixed(1) : "0.0"} Hz`;
+        document.getElementById("svg-m2-temp").textContent = `TEMP: ${t.p102Temp.toFixed(1)} °C`;
+
+        // MOV-101 Valve
+        const movColor = t.mov101Pos > 50 ? green : muted;
+        document.getElementById("mov101-tri1").setAttribute("fill", movColor);
+        document.getElementById("mov101-tri1").setAttribute("stroke", movColor);
+        document.getElementById("mov101-tri2").setAttribute("fill", movColor);
+        document.getElementById("mov101-tri2").setAttribute("stroke", movColor);
+        document.getElementById("mov101-state-txt").textContent =
+          `${t.mov101Open ? "OPEN" : "CLOSED"} (${Math.round(t.mov101Pos)}%)`;
+        document.getElementById("mov101-state-txt").setAttribute("fill", movColor);
+
+        const pipeIn1 = document.getElementById("pipe-inlet-1");
+        const pipeIn2 = document.getElementById("pipe-inlet-2");
+        pipeIn1.classList.add("pipe-flow-active");
+        if (t.mov101Pos > 5) {
+          pipeIn2.setAttribute("stroke", cyan);
+          pipeIn2.classList.add("pipe-flow-active");
+        } else {
+          pipeIn2.setAttribute("stroke", muted);
+          pipeIn2.classList.remove("pipe-flow-active");
+        }
+
+        // Tank TK-101 Liquid Fill
+        const maxH = 204;
+        const h = Math.max(2, (t.tk101Level / 100) * maxH);
+        const y = 347 - h;
+        const liq = document.getElementById("tk101-liquid");
+        const men = document.getElementById("tk101-meniscus");
+        liq.setAttribute("y", y.toFixed(1));
+        liq.setAttribute("height", h.toFixed(1));
+        men.setAttribute("y1", y.toFixed(1));
+        men.setAttribute("y2", y.toFixed(1));
+
+        const levelAlarm = t.tk101Level >= 90 || t.tk101Level <= 10;
+        const levelWarn = t.tk101Level >= 80 || t.tk101Level <= 20;
+        const liqStroke = levelAlarm ? red : levelWarn ? "#f59e0b" : cyan;
+        men.setAttribute("stroke", liqStroke);
+        document.getElementById("svg-tk-level").textContent = `${t.tk101Level.toFixed(1)} %`;
+        document.getElementById("svg-tk-level").setAttribute("fill", liqStroke);
+
+        // Pumps P-101 & P-102 + Discharge Pipes
+        const p1Body = document.getElementById("p101-body");
+        const p1Imp = document.getElementById("p101-impeller");
+        p1Body.setAttribute("stroke", m1Color);
+        p1Imp.setAttribute("fill", m1Color);
+
+        const p2Body = document.getElementById("p102-body");
+        const p2Imp = document.getElementById("p102-impeller");
+        p2Body.setAttribute("stroke", m2Color);
+        p2Imp.setAttribute("fill", m2Color);
+
+        const setPipeFlow = (id, active) => {
+          const el = document.getElementById(id);
+          el.setAttribute("stroke", active ? cyan : muted);
+          el.classList.toggle("pipe-flow-active", active);
+        };
+
+        setPipeFlow("pipe-suction-main", t.p101Running || t.p102Running);
+        setPipeFlow("pipe-p1-suc", t.p101Running);
+        setPipeFlow("pipe-p1-dis", t.p101Running);
+        setPipeFlow("pipe-p2-suc", t.p102Running);
+        setPipeFlow("pipe-p2-dis", t.p102Running);
+        setPipeFlow("pipe-dis-header", t.p101Running || t.p102Running);
+
+        // Header Readouts
+        document.getElementById("svg-dis-press").textContent = `${t.dischargePressure.toFixed(2)} bar`;
+        document.getElementById("svg-dis-flow").textContent = `${t.dischargeFlow.toFixed(1)} m³/h`;
+        document.getElementById("svg-in-flow").textContent = `${t.inletFlow.toFixed(1)} m³/h`;
+      }
+
+      function renderFaceplate() {
+        const asset = state.selectedAsset;
+        const t = state.tags;
+
+        // Highlight active quick button
+        document.querySelectorAll("[data-select-asset]").forEach((btn) => {
+          btn.classList.toggle("btn-cyan", btn.dataset.selectAsset === asset);
+        });
+
+        const tagEl = document.getElementById("fp-tag-id");
+        const descEl = document.getElementById("fp-tag-desc");
+        const badgeEl = document.getElementById("fp-status-badge");
+        const autoBtn = document.getElementById("fp-mode-auto");
+        const manBtn = document.getElementById("fp-mode-man");
+        const startBtn = document.getElementById("fp-btn-start");
+        const stopBtn = document.getElementById("fp-btn-stop");
+        const resetBtn = document.getElementById("fp-btn-reset");
+        const spSec = document.getElementById("fp-setpoint-section");
+        const spLabel = document.getElementById("fp-sp-label");
+        const spVal = document.getElementById("fp-sp-val");
+        const spSlider = document.getElementById("fp-sp-slider");
+        const telGrid = document.getElementById("fp-telemetry-grid");
+        const permList = document.getElementById("fp-permissives-list");
+        const faultBox = document.getElementById("fp-fault-actions");
+
+        tagEl.textContent = asset;
+        resetBtn.style.display = "none";
+        spSec.style.display = "none";
+
+        let isAuto = true;
+        let metrics = [];
+        let perms = [];
+        let faultsHtml = "";
+
+        if (asset === "CB-101") {
+          descEl.textContent = "Main 415V Incomer Air Circuit Breaker";
+          isAuto = t.cb101Auto;
+          badgeEl.textContent = t.cb101Trip ? "TRIPPED" : t.cb101Closed ? "CLOSED" : "OPEN";
+          badgeEl.className = `badge ${t.cb101Trip ? "badge-crit" : t.cb101Closed ? "badge-good" : "badge-norm"}`;
+          startBtn.textContent = "CLOSE BREAKER";
+          stopBtn.textContent = "OPEN BREAKER";
+          if (t.cb101Trip) resetBtn.style.display = "block";
+
+          metrics = [
+            { name: "Incoming 13.8kV", val: `${t.gridKv.toFixed(2)} kV` },
+            { name: "415V Busbar", val: `${t.busVoltage.toFixed(1)} V` },
+            { name: "Bus Frequency", val: `${t.busFreq.toFixed(2)} Hz` },
+            { name: "Total Load", val: `${t.totalKw.toFixed(1)} kW` }
+          ];
+          perms = [
+            { label: "13.8kV Utility Healthy", ok: t.gridKv > 13.0 },
+            { label: "No Protection Trip", ok: !t.cb101Trip },
+            { label: "PLC Link Online", ok: state.commOnline }
+          ];
+          faultsHtml = `
+            <button class="btn btn-red" onclick="window.__scadaFault('CB101_TRIP')">SIMULATE BREAKER TRIP</button>
+          `;
+        } else if (asset === "MOV-101") {
+          descEl.textContent = "Raw Water Motorized Inlet Valve";
+          isAuto = t.mov101Auto;
+          badgeEl.textContent = t.mov101Open ? "OPEN" : "CLOSED";
+          badgeEl.className = `badge ${t.mov101Open ? "badge-good" : "badge-norm"}`;
+          startBtn.textContent = "OPEN VALVE";
+          stopBtn.textContent = "CLOSE VALVE";
+
+          metrics = [
+            { name: "Valve Position", val: `${Math.round(t.mov101Pos)} %` },
+            { name: "Inlet Flow", val: `${t.inletFlow.toFixed(1)} m³/h` },
+            { name: "TK-101 Level", val: `${t.tk101Level.toFixed(1)} %` },
+            { name: "Auto Close SP", val: `${t.tk101HighSp.toFixed(0)} %` }
+          ];
+          perms = [
+            { label: "Actuator Power Healthy", ok: true },
+            { label: "Tank Below 95% Overflow", ok: t.tk101Level < 95 },
+            { label: "PLC Link Online", ok: state.commOnline }
+          ];
+          faultsHtml = `
+            <button class="btn btn-amber" onclick="window.__scadaFault('FILL_TANK')">FAST-FILL TANK TO 89%</button>
+          `;
+        } else if (asset === "TK-101") {
+          descEl.textContent = "Main Process Water Storage Tank";
+          isAuto = true;
+          badgeEl.textContent = t.tk101Level >= 90 || t.tk101Level <= 10 ? "ALARM" : "NORMAL";
+          badgeEl.className = `badge ${t.tk101Level >= 90 || t.tk101Level <= 10 ? "badge-crit" : "badge-good"}`;
+          startBtn.textContent = "OPEN INLET (MOV)";
+          stopBtn.textContent = "CLOSE INLET (MOV)";
+
+          spSec.style.display = "flex";
+          spLabel.textContent = "Auto Fill Cut-Off Setpoint";
+          spVal.textContent = `${t.tk101HighSp.toFixed(0)} %`;
+          spSlider.min = "50";
+          spSlider.max = "92";
+          spSlider.step = "1";
+          spSlider.value = String(t.tk101HighSp);
+
+          metrics = [
+            { name: "Tank Level", val: `${t.tk101Level.toFixed(2)} %` },
+            { name: "Inlet Flow", val: `${t.inletFlow.toFixed(1)} m³/h` },
+            { name: "Discharge Flow", val: `${t.dischargeFlow.toFixed(1)} m³/h` },
+            { name: "Header Press", val: `${t.dischargePressure.toFixed(2)} bar` }
+          ];
+          perms = [
+            { label: "Above Low-Low Cutout (10%)", ok: t.tk101Level > 10 },
+            { label: "Below High-High Limit (90%)", ok: t.tk101Level < 90 },
+            { label: "Level Transmitter Healthy", ok: !t.tk101SensorDrift }
+          ];
+          faultsHtml = `
+            <button class="btn btn-amber" onclick="window.__scadaFault('DRAIN_TANK')">DRAIN TANK TO 11%</button>
+            <button class="btn ${t.tk101SensorDrift ? "btn-red" : ""}" onclick="window.__scadaFault('DRIFT_TOGGLE')">
+              ${t.tk101SensorDrift ? "STOP SENSOR DRIFT" : "INJECT LIT SENSOR DRIFT"}
+            </button>
+          `;
+        } else if (asset === "P-101" || asset === "P-102") {
+          const isP1 = asset === "P-101";
+          descEl.textContent = isP1 ? "Primary Variable-Speed Feed Pump" : "Secondary Booster Pump";
+          isAuto = isP1 ? t.p101Auto : t.p102Auto;
+          const running = isP1 ? t.p101Running : t.p102Running;
+          const trip = isP1 ? t.p101Trip : t.p102Trip;
+          const hz = isP1 ? t.p101HzSp : t.p102HzSp;
+          const amp = isP1 ? t.p101Current : t.p102Current;
+          const temp = isP1 ? t.p101Temp : t.p102Temp;
+          const hrs = isP1 ? t.p101Hours : t.p102Hours;
+
+          badgeEl.textContent = trip ? "TRIPPED" : running ? "RUNNING" : "STOPPED";
+          badgeEl.className = `badge ${trip ? "badge-crit" : running ? "badge-good" : "badge-norm"}`;
+          startBtn.textContent = "START PUMP";
+          stopBtn.textContent = "STOP PUMP";
+          if (trip) resetBtn.style.display = "block";
+
+          spSec.style.display = "flex";
+          spLabel.textContent = "VFD Speed Reference";
+          spVal.textContent = `${hz.toFixed(1)} Hz`;
+          spSlider.min = "20";
+          spSlider.max = "50";
+          spSlider.step = "0.5";
+          spSlider.value = String(hz);
+
+          metrics = [
+            { name: "Motor Current", val: `${amp.toFixed(1)} A` },
+            { name: "VFD Frequency", val: `${running ? hz.toFixed(1) : "0.0"} Hz` },
+            { name: "Winding Temp", val: `${temp.toFixed(1)} °C` },
+            { name: "Run Hours", val: `${hrs.toFixed(1)} h` }
+          ];
+          perms = [
+            { label: "415V Bus Energized", ok: t.busVoltage > 360 },
+            { label: "TK-101 Level > 10%", ok: t.tk101Level > 10 },
+            { label: "No Thermal Overload", ok: !trip },
+            { label: "PLC Link Online", ok: state.commOnline }
+          ];
+          faultsHtml = `
+            <button class="btn btn-red" onclick="window.__scadaFault('${isP1 ? "P101_OVL" : "P102_OVL"}')">INJECT OVERLOAD TRIP</button>
+          `;
+        }
+
+        autoBtn.classList.toggle("btn-active", isAuto);
+        manBtn.classList.toggle("btn-active", !isAuto);
+
+        telGrid.innerHTML = metrics
+          .map(
+            (m) => `
+            <div class="fp-metric">
+              <div class="fp-metric-name">${m.name}</div>
+              <div class="fp-metric-val">${m.val}</div>
+            </div>`
+          )
+          .join("");
+
+        permList.innerHTML = perms
+          .map(
+            (p) => `
+            <div class="perm-item">
+              <span>${p.label}</span>
+              <span class="${p.ok ? "perm-ok" : "perm-fail"}">${p.ok ? "OK" : "BLOCKED"}</span>
+            </div>`
+          )
+          .join("");
+
+        faultBox.innerHTML = faultsHtml;
+      }
+
+      function renderAlarmsAndSOE() {
+        const tbody = document.getElementById("alarm-table-body");
+        let list = Object.values(state.alarms);
+
+        if (state.alarmFilter === "UNACK") {
+          list = list.filter((a) => !a.acked);
+        } else if (state.alarmFilter === "ACTIVE") {
+          list = list.filter((a) => a.active);
+        }
+
+        tbody.innerHTML = list
+          .map((a) => {
+            const prioBadge =
+              a.priority === "CRITICAL"
+                ? "badge-crit"
+                : a.priority === "HIGH"
+                ? "badge-high"
+                : "badge-med";
+
+            let stateLabel = "NORMAL";
+            let stateBadge = "badge-norm";
+            if (a.active && !a.acked) {
+              stateLabel = "ACTIVE UNACK";
+              stateBadge = "badge-crit blink-text";
+            } else if (a.active && a.acked) {
+              stateLabel = "ACTIVE ACK";
+              stateBadge = "badge-high";
+            } else if (!a.active && !a.acked) {
+              stateLabel = "CLEARED UNACK";
+              stateBadge = "badge-info blink-text";
+            }
+
+            return `
+              <tr>
+                <td>${a.timestamp || "--:--:--"}</td>
+                <td><span class="badge ${prioBadge}">${a.priority}</span></td>
+                <td><span class="badge ${stateBadge}">${stateLabel}</span></td>
+                <td style="font-weight:700; color:var(--text-primary);">${a.tag}</td>
+                <td>${a.desc}</td>
+                <td>${a.valText || "-"} <span style="color:var(--text-muted);">(${a.limitText})</span></td>
+                <td>
+                  <button class="btn btn-amber" ${a.acked ? "disabled" : ""} onclick="window.__scadaAck('${a.id}')">
+                    ${a.acked ? "ACKED" : "ACK"}
+                  </button>
+                </td>
+              </tr>`;
+          })
+          .join("");
+
+        const soeBody = document.getElementById("soe-table-body");
+        soeBody.innerHTML = state.soeLog
+          .slice(0, 60)
+          .map((e) => {
+            const catClass =
+              e.category === "ALARM" || e.category === "TRIP"
+                ? "badge-crit"
+                : e.category === "CMD"
+                ? "badge-info"
+                : "badge-norm";
+            return `
+              <tr>
+                <td>${e.time}</td>
+                <td><span class="badge ${catClass}">${e.category}</span></td>
+                <td style="font-weight:700;">${e.source}</td>
+                <td>${e.message}</td>
+              </tr>`;
+          })
+          .join("");
+      }
+
+      function renderModbusInspector() {
+        const coilsSpec = [
+          { addr: 0, tag: "CB101_CLOSED_FB" },
+          { addr: 1, tag: "MOV101_OPEN_CMD" },
+          { addr: 2, tag: "P101_START_CMD" },
+          { addr: 3, tag: "P101_RUNNING_FB" },
+          { addr: 4, tag: "P102_START_CMD" },
+          { addr: 5, tag: "P102_RUNNING_FB" },
+          { addr: 6, tag: "COMMON_FAULT_BIT" }
+        ];
+
+        document.getElementById("modbus-coils-body").innerHTML = coilsSpec
+          .map((c) => {
+            const val = modbus.coils[c.addr];
+            return `
+              <tr>
+                <td>0x0${c.addr} (${c.addr})</td>
+                <td style="font-weight:700;">${c.tag}</td>
+                <td><span class="badge ${val ? "badge-good" : "badge-norm"}">${val ? "1 (TRUE)" : "0 (FALSE)"}</span></td>
+                <td>
+                  <button class="btn" onclick="window.__scadaWriteCoil(${c.addr}, ${val ? 0 : 1})">
+                    TOGGLE -> ${val ? "0" : "1"}
+                  </button>
+                </td>
+              </tr>`;
+          })
+          .join("");
+
+        const regsSpec = [
+          { reg: 0, label: "STATUS_BITFIELD (Uint16)", decode: (r) => `0b${r.toString(2).padStart(8, "0")}`, writable: false },
+          { reg: 1, label: "TK101_LEVEL (0.01 %)", decode: (r) => `${(r / 100).toFixed(2)} %`, writable: true },
+          { reg: 2, label: "P101_HZ_SP (0.1 Hz)", decode: (r) => `${(r / 10).toFixed(1)} Hz`, writable: true },
+          { reg: 3, label: "P102_HZ_SP (0.1 Hz)", decode: (r) => `${(r / 10).toFixed(1)} Hz`, writable: true },
+          { reg: 4, label: "P101_TEMP (Int16 0.1°C)", decode: (r) => `${(registerToInt16(r) / 10).toFixed(1)} °C`, writable: false },
+          { reg: 5, label: "P102_TEMP (Int16 0.1°C)", decode: (r) => `${(registerToInt16(r) / 10).toFixed(1)} °C`, writable: false },
+          {
+            reg: 10,
+            label: "BUS_VOLTS (Float32 HI)",
+            decode: () => `${registersToFloat32(modbus.holdingRegisters[10], modbus.holdingRegisters[11], true).toFixed(2)} V`,
+            writable: false
+          },
+          {
+            reg: 11,
+            label: "BUS_VOLTS (Float32 LO)",
+            decode: () => "(Paired w/ Reg 10)",
+            writable: false
+          },
+          {
+            reg: 12,
+            label: "HDR_PRESS (Float32 HI)",
+            decode: () => `${registersToFloat32(modbus.holdingRegisters[12], modbus.holdingRegisters[13], true).toFixed(2)} bar`,
+            writable: false
+          },
+          {
+            reg: 14,
+            label: "HDR_FLOW (Float32 HI)",
+            decode: () => `${registersToFloat32(modbus.holdingRegisters[14], modbus.holdingRegisters[15], true).toFixed(1)} m³/h`,
+            writable: false
+          }
+        ];
+
+        document.getElementById("modbus-regs-body").innerHTML = regsSpec
+          .map((item) => {
+            const raw = modbus.holdingRegisters[item.reg];
+            const hex = "0x" + raw.toString(16).toUpperCase().padStart(4, "0");
+            return `
+              <tr>
+                <td>400${String(item.reg + 1).padStart(2, "0")} [${item.reg}]</td>
+                <td style="font-weight:700;">${item.label}</td>
+                <td style="color:var(--accent-cyan);">${hex}</td>
+                <td>${raw}</td>
+                <td style="color:#34d399; font-weight:700;">${item.decode(raw)}</td>
+                <td>
+                  ${
+                    item.writable
+                      ? `<div style="display:flex; gap:4px;">
+                           <input class="reg-input" type="number" id="reg-in-${item.reg}" value="${raw}" />
+                           <button class="btn btn-cyan" onclick="window.__scadaWriteReg(${item.reg})">FC06</button>
+                         </div>`
+                      : `<span style="color:var(--text-muted);">RO</span>`
+                  }
+                </td>
+              </tr>`;
+          })
+          .join("");
+      }
+
+      // ------------------------------------------------------------------------
+      // 7. HTML5 CANVAS MULTI-PEN TREND CHART
+      // ------------------------------------------------------------------------
+      let trendHoverX = null;
+
+      function renderPenToggles() {
+        const container = document.getElementById("pen-toggles");
+        container.innerHTML = TREND_PENS.map(
+          (p, idx) => `
+          <div class="pen-chip ${p.enabled ? "" : "inactive"}" data-pen-idx="${idx}">
+            <span class="pen-swatch" style="background:${p.color};"></span>
+            <span>${p.label}</span>
+          </div>`
+        ).join("");
+      }
+
+      function renderTrendChart() {
+        const canvas = document.getElementById("trend-canvas");
+        if (!canvas) return;
+        const rect = canvas.parentElement.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+
+        const ctx = canvas.getContext("2d");
+        ctx.scale(dpr, dpr);
+
+        const w = rect.width;
+        const h = rect.height;
+        const pad = { top: 18, right: 20, bottom: 28, left: 48 };
+        const plotW = w - pad.left - pad.right;
+        const plotH = h - pad.top - pad.bottom;
+
+        ctx.fillStyle = "#090d12";
+        ctx.fillRect(0, 0, w, h);
+
+        // Grid lines
+        ctx.strokeStyle = "#182230";
+        ctx.lineWidth = 1;
+        ctx.font = "10px 'Cascadia Code', Consolas, monospace";
+        ctx.fillStyle = "#64748b";
+
+        for (let i = 0; i <= 5; i++) {
+          const y = pad.top + (plotH / 5) * i;
+          ctx.beginPath();
+          ctx.moveTo(pad.left, y);
+          ctx.lineTo(pad.left + plotW, y);
+          ctx.stroke();
+
+          const pct = 100 - i * 20;
+          ctx.fillText(`${pct}%`, 8, y + 3);
+        }
+
+        const samples = state.history.slice(-state.trendWindow);
+        document.getElementById("trend-sample-count").textContent =
+          `BUFFER: ${state.history.length} SAMPLES (VIEWING ${samples.length})`;
+
+        if (samples.length < 2) return;
+
+        // Draw each enabled pen normalized to its [min, max]
+        TREND_PENS.forEach((pen) => {
+          if (!pen.enabled) return;
+          ctx.strokeStyle = pen.color;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+
+          samples.forEach((s, idx) => {
+            const x = pad.left + (idx / (samples.length - 1)) * plotW;
+            const norm = (s[pen.key] - pen.min) / (pen.max - pen.min);
+            const clamped = Math.max(0, Math.min(1, norm));
+            const y = pad.top + plotH - clamped * plotH;
+            if (idx === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          });
+          ctx.stroke();
+        });
+
+        // X-axis timestamps
+        ctx.fillStyle = "#64748b";
+        ctx.fillText(samples[0].time, pad.left, h - 8);
+        const midIdx = Math.floor(samples.length / 2);
+        ctx.fillText(samples[midIdx].time, pad.left + plotW / 2 - 24, h - 8);
+        ctx.fillText(samples[samples.length - 1].time, pad.left + plotW - 52, h - 8);
+
+        // Crosshair Inspection
+        if (trendHoverX !== null && trendHoverX >= pad.left && trendHoverX <= pad.left + plotW) {
+          const ratio = (trendHoverX - pad.left) / plotW;
+          const idx = Math.min(samples.length - 1, Math.max(0, Math.round(ratio * (samples.length - 1))));
+          const sample = samples[idx];
+          const snapX = pad.left + (idx / (samples.length - 1)) * plotW;
+
+          ctx.strokeStyle = "rgba(255,255,255,0.35)";
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.moveTo(snapX, pad.top);
+          ctx.lineTo(snapX, pad.top + plotH);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          const parts = TREND_PENS.filter((p) => p.enabled).map(
+            (p) => `${p.label.split(" ")[0]}: ${sample[p.key]}`
+          );
+          document.getElementById("trend-cursor-readout").textContent =
+            `[${sample.time}]  ` + parts.join("   |   ");
+
+          // Floating Desktop Tooltip Box on Canvas
+          const tooltipLines = [
+            `TIME: ${sample.time}`,
+            ...TREND_PENS.filter((p) => p.enabled).map((p) => `${p.label}: ${sample[p.key]}`)
+          ];
+          ctx.font = "11px 'Cascadia Code', Consolas, monospace";
+          const boxW = Math.max(...tooltipLines.map((l) => ctx.measureText(l).width)) + 18;
+          const boxH = tooltipLines.length * 16 + 10;
+          const boxX = snapX + 12 + boxW > w - pad.right ? snapX - boxW - 12 : snapX + 12;
+          const boxY = Math.min(pad.top + 8, Math.max(pad.top, pad.top + plotH - boxH - 8));
+
+          ctx.fillStyle = "rgba(24, 32, 44, 0.94)";
+          ctx.strokeStyle = "#334358";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(boxX, boxY, boxW, boxH, 4);
+          ctx.fill();
+          ctx.stroke();
+
+          tooltipLines.forEach((line, i) => {
+            ctx.fillStyle = i === 0 ? "#93a4b8" : "#e6edf5";
+            ctx.fillText(line, boxX + 9, boxY + 15 + i * 16);
+          });
+        }
+      }
+
+      // ------------------------------------------------------------------------
+      // 8. GLOBAL HOOKS & EVENT LISTENERS
+      // ------------------------------------------------------------------------
+      window.__scadaAck = (id) => {
+        acknowledgeAlarm(id);
+        renderAll();
+      };
+
+      window.__scadaFault = (type) => {
+        const t = state.tags;
+        if (type === "CB101_TRIP") {
+          t.cb101Trip = true;
+          t.cb101Closed = false;
+          logSOE("FAULT", "CB-101", "Simulated 50/51 Overcurrent Relay Trip injected");
+          showToast("Fault injected: CB-101 Breaker Tripped", "err");
+        } else if (type === "P101_OVL") {
+          t.p101Trip = true;
+          logSOE("FAULT", "P-101", "Simulated Motor Thermal Overload injected");
+          showToast("Fault injected: P-101 Overload Trip", "err");
+        } else if (type === "P102_OVL") {
+          t.p102Trip = true;
+          logSOE("FAULT", "P-102", "Simulated Motor Thermal Overload injected");
+          showToast("Fault injected: P-102 Overload Trip", "err");
+        } else if (type === "FILL_TANK") {
+          t.tk101Level = 89.2;
+          t.mov101Open = true;
+          logSOE("TEST", "TK-101", "Tank level set to 89.2% for High/HH alarm test");
+        } else if (type === "DRAIN_TANK") {
+          t.tk101Level = 11.2;
+          t.mov101Open = false;
+          logSOE("TEST", "TK-101", "Tank level set to 11.2% for Low/LL interlock test");
+        } else if (type === "DRIFT_TOGGLE") {
+          t.tk101SensorDrift = !t.tk101SensorDrift;
+          logSOE("TEST", "TK-101", `Level transmitter drift ${t.tk101SensorDrift ? "ENABLED" : "DISABLED"}`);
+        }
+        renderAll();
+      };
+
+      window.__scadaWriteCoil = (addr, val) => {
+        if (!state.commOnline) {
+          showToast("Modbus Write Failed: Link Offline", "err");
+          return;
+        }
+        const t = state.tags;
+        if (addr === 0) t.cb101Closed = Boolean(val);
+        if (addr === 1) { t.mov101Auto = false; t.mov101Open = Boolean(val); }
+        if (addr === 2) { t.p101Auto = false; t.p101Cmd = Boolean(val); }
+        if (addr === 4) { t.p102Auto = false; t.p102Cmd = Boolean(val); }
+        logSOE("MODBUS", `COIL:${addr}`, `FC05 Write Single Coil [${addr}] = ${val}`);
+        showToast(`Modbus FC05: Coil ${addr} set to ${val}`);
+        syncModbusRegisters();
+        renderAll();
+      };
+
+      window.__scadaWriteReg = (reg) => {
+        if (!state.commOnline) {
+          showToast("Modbus Write Failed: Link Offline", "err");
+          return;
+        }
+        const input = document.getElementById(`reg-in-${reg}`);
+        const raw = Math.max(0, Math.min(65535, Math.trunc(Number(input.value) || 0)));
+        const t = state.tags;
+
+        if (reg === 1) t.tk101Level = Math.max(0, Math.min(100, raw / 100));
+        if (reg === 2) t.p101HzSp = Math.max(20, Math.min(50, raw / 10));
+        if (reg === 3) t.p102HzSp = Math.max(20, Math.min(50, raw / 10));
+
+        logSOE("MODBUS", `REG:400${String(reg + 1).padStart(2, "0")}`, `FC06 Write Single Register [${reg}] = ${raw}`);
+        showToast(`Modbus FC06: Register ${reg} set to ${raw}`);
+        syncModbusRegisters();
+        renderAll();
+      };
+
+      function switchScreen(screenId) {
+        document.querySelectorAll(".nav-item").forEach((b) => {
+          b.classList.toggle("active", b.dataset.screen === screenId);
+        });
+        document.querySelectorAll(".screen").forEach((s) => {
+          s.classList.toggle("active", s.id === screenId);
+        });
+        if (screenId === "screen-trends") renderTrendChart();
+        if (screenId === "screen-modbus") renderModbusInspector();
+      }
+
+      function renderAll() {
+        renderTopBarAndBanner();
+        renderMimicSVG();
+        renderFaceplate();
+        renderAlarmsAndSOE();
+        if (document.getElementById("screen-modbus").classList.contains("active")) {
+          renderModbusInspector();
+        }
+        if (document.getElementById("screen-trends").classList.contains("active") && !state.trendPaused) {
+          renderTrendChart();
+        }
+      }
+
+      // Bind DOM Events
+      document.querySelectorAll(".nav-item").forEach((btn) => {
+        btn.addEventListener("click", () => switchScreen(btn.dataset.screen));
+      });
+
+      document.getElementById("btn-goto-alarms").addEventListener("click", () => switchScreen("screen-alarms"));
+
+      document.querySelectorAll("[data-select-asset]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          state.selectedAsset = btn.dataset.selectAsset;
+          renderFaceplate();
+        });
+      });
+
+      document.querySelectorAll(".equip-node").forEach((node) => {
+        node.addEventListener("click", () => {
+          state.selectedAsset = node.dataset.asset;
+          renderFaceplate();
+        });
+      });
+
+      // Faceplate Mode & Command Buttons
+      document.getElementById("fp-mode-auto").addEventListener("click", () => {
+        const a = state.selectedAsset;
+        if (a === "CB-101") state.tags.cb101Auto = true;
+        if (a === "MOV-101") state.tags.mov101Auto = true;
+        if (a === "P-101") state.tags.p101Auto = true;
+        if (a === "P-102") state.tags.p102Auto = true;
+        logSOE("MODE", a, "Switched control mode to AUTO (SCADA)");
+        renderFaceplate();
+      });
+
+      document.getElementById("fp-mode-man").addEventListener("click", () => {
+        const a = state.selectedAsset;
+        if (a === "CB-101") state.tags.cb101Auto = false;
+        if (a === "MOV-101") state.tags.mov101Auto = false;
+        if (a === "P-101") state.tags.p101Auto = false;
+        if (a === "P-102") state.tags.p102Auto = false;
+        logSOE("MODE", a, "Switched control mode to MANUAL");
+        renderFaceplate();
+      });
+
+      document.getElementById("fp-btn-start").addEventListener("click", () => {
+        const target = state.selectedAsset === "TK-101" ? "MOV-101" : state.selectedAsset;
+        commandAsset(target, "START");
+        renderAll();
+      });
+
+      document.getElementById("fp-btn-stop").addEventListener("click", () => {
+        const target = state.selectedAsset === "TK-101" ? "MOV-101" : state.selectedAsset;
+        commandAsset(target, "STOP");
+        renderAll();
+      });
+
+      document.getElementById("fp-btn-reset").addEventListener("click", () => {
+        commandAsset(state.selectedAsset, "RESET");
+        renderAll();
+      });
+
+      document.getElementById("fp-sp-slider").addEventListener("input", (e) => {
+        const val = parseFloat(e.target.value);
+        const a = state.selectedAsset;
+        if (a === "P-101") state.tags.p101HzSp = val;
+        if (a === "P-102") state.tags.p102HzSp = val;
+        if (a === "TK-101") state.tags.tk101HighSp = val;
+        renderFaceplate();
+      });
+
+      // Top Bar Controls
+      document.getElementById("btn-comm-toggle").addEventListener("click", () => {
+        state.commOnline = !state.commOnline;
+        logSOE("COMM", "PLC-01", state.commOnline ? "PLC link restored ONLINE" : "Simulated PLC communication TIMEOUT");
+        showToast(state.commOnline ? "PLC Link Restored" : "PLC Communication Timeout Injected", state.commOnline ? "info" : "err");
+        renderAll();
+      });
+
+      document.querySelectorAll("[data-speed]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          state.simSpeed = Number(btn.dataset.speed);
+          document.querySelectorAll("[data-speed]").forEach((b) => b.classList.remove("btn-active"));
+          btn.classList.add("btn-active");
+        });
+      });
+
+      document.getElementById("btn-ack-all").addEventListener("click", () => {
+        acknowledgeAllAlarms();
+        renderAll();
+      });
+
+      document.getElementById("btn-alm-screen-ack").addEventListener("click", () => {
+        acknowledgeAllAlarms();
+        renderAll();
+      });
+
+      document.getElementById("btn-banner-ack").addEventListener("click", (e) => {
+        const id = e.target.dataset.alarmId;
+        if (id) acknowledgeAlarm(id);
+        renderAll();
+      });
+
+      document.getElementById("btn-reset-all-trips").addEventListener("click", () => {
+        resetAllTrips();
+        renderAll();
+      });
+
+      document.querySelectorAll("[data-alm-filter]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          state.alarmFilter = btn.dataset.almFilter;
+          document.querySelectorAll("[data-alm-filter]").forEach((b) => b.classList.remove("btn-active"));
+          btn.classList.add("btn-active");
+          renderAlarmsAndSOE();
+        });
+      });
+
+      document.getElementById("btn-clear-soe").addEventListener("click", () => {
+        state.soeLog = [];
+        renderAlarmsAndSOE();
+      });
+
+      // Unit Scenario Selector
+      document.getElementById("unit-selector").addEventListener("change", (e) => {
+        const t = state.tags;
+        if (e.target.value === "U2") {
+          t.p101Auto = false;
+          t.p102Auto = false;
+          t.p101Cmd = true;
+          t.p102Cmd = true;
+          t.p101HzSp = 48.5;
+          t.p102HzSp = 48.5;
+          logSOE("SCENARIO", "UNIT-01", "Loaded High-Demand Peak Load Scenario (Dual Pumps)");
+          showToast("Loaded High-Demand Peak Load Scenario");
+        } else {
+          t.p101Auto = true;
+          t.p102Auto = true;
+          t.p101HzSp = 42.0;
+          t.p102HzSp = 45.0;
+          logSOE("SCENARIO", "UNIT-01", "Loaded Standard Auto Duty/Standby Scenario");
+          showToast("Loaded Standard Duty/Standby Scenario");
+        }
+        renderAll();
+      });
+
+      // Trend Controls
+      document.getElementById("pen-toggles").addEventListener("click", (e) => {
+        const chip = e.target.closest("[data-pen-idx]");
+        if (!chip) return;
+        const idx = Number(chip.dataset.penIdx);
+        TREND_PENS[idx].enabled = !TREND_PENS[idx].enabled;
+        renderPenToggles();
+        renderTrendChart();
+      });
+
+      document.getElementById("btn-trend-pause").addEventListener("click", (e) => {
+        state.trendPaused = !state.trendPaused;
+        e.target.textContent = state.trendPaused ? "RESUME CHART" : "PAUSE CHART";
+        e.target.classList.toggle("btn-amber", state.trendPaused);
+      });
+
+      document.getElementById("trend-window-select").addEventListener("change", (e) => {
+        state.trendWindow = Number(e.target.value);
+        renderTrendChart();
+      });
+
+      document.getElementById("btn-export-csv").addEventListener("click", () => {
+        const headers = ["Timestamp", "TK101_Level_Pct", "Header_Press_Bar", "Total_Current_A", "Bus_Voltage_V", "P101_Temp_C"];
+        const rows = state.history.map((s) =>
+          [s.time, s.tk101Level, s.dischargePressure, s.totalCurrent, s.busVoltage, s.p101Temp].join(",")
+        );
+        const csv = [headers.join(","), ...rows].join("\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `vanguard_scada_historian_${Date.now()}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+        showToast("Exported historian CSV");
+      });
+
+      const trendCanvas = document.getElementById("trend-canvas");
+      trendCanvas.addEventListener("mousemove", (e) => {
+        const rect = trendCanvas.getBoundingClientRect();
+        trendHoverX = e.clientX - rect.left;
+        renderTrendChart();
+      });
+      trendCanvas.addEventListener("mouseleave", () => {
+        trendHoverX = null;
+        renderTrendChart();
+      });
+      window.addEventListener("resize", () => {
+        if (document.getElementById("screen-trends").classList.contains("active")) {
+          renderTrendChart();
+        }
+      });
+
+      // Modbus Endian Toggles
+      document.getElementById("btn-endian-abcd").addEventListener("click", () => {
+        state.highWordFirst = true;
+        document.getElementById("btn-endian-abcd").classList.add("btn-active");
+        document.getElementById("btn-endian-cdab").classList.remove("btn-active");
+        syncModbusRegisters();
+        renderModbusInspector();
+      });
+
+      document.getElementById("btn-endian-cdab").addEventListener("click", () => {
+        state.highWordFirst = false;
+        document.getElementById("btn-endian-cdab").classList.add("btn-active");
+        document.getElementById("btn-endian-abcd").classList.remove("btn-active");
+        syncModbusRegisters();
+        renderModbusInspector();
+      });
+
+      // Windows Desktop Keyboard Shortcuts
+      let lastSpeedBeforePause = 1;
+      window.addEventListener("keydown", (e) => {
+        const tag = document.activeElement ? document.activeElement.tagName : "";
+        const isTyping = tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA";
+        if (isTyping && e.key !== "Escape") return;
+
+        const screenMap = {
+          "1": "screen-mimic",
+          "2": "screen-alarms",
+          "3": "screen-trends",
+          "4": "screen-modbus"
+        };
+
+        if (screenMap[e.key] && (!e.ctrlKey && !e.metaKey)) {
+          e.preventDefault();
+          switchScreen(screenMap[e.key]);
+          return;
+        }
+
+        if (e.altKey && screenMap[e.key]) {
+          e.preventDefault();
+          switchScreen(screenMap[e.key]);
+          return;
+        }
+
+        if ((e.key === "a" || e.key === "A") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault();
+          acknowledgeAllAlarms();
+          renderAll();
+          return;
+        }
+
+        if (e.code === "Space" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault();
+          if (state.simSpeed > 0) {
+            lastSpeedBeforePause = state.simSpeed;
+            state.simSpeed = 0;
+          } else {
+            state.simSpeed = lastSpeedBeforePause || 1;
+          }
+          document.querySelectorAll("[data-speed]").forEach((b) => {
+            b.classList.toggle("btn-active", Number(b.dataset.speed) === state.simSpeed);
+          });
+          showToast(state.simSpeed === 0 ? "Simulation PAUSED [Space]" : `Simulation RESUMED (${state.simSpeed}x) [Space]`);
+          return;
+        }
+
+        if (e.key === "Escape") {
+          if (document.activeElement && typeof document.activeElement.blur === "function" && isTyping) {
+            document.activeElement.blur();
+            return;
+          }
+          state.selectedAsset = "CB-101";
+          renderFaceplate();
+          switchScreen("screen-mimic");
+        }
+      });
+
+      // ------------------------------------------------------------------------
+      // 9. INITIALIZATION & DETERMINISTIC SCAN LOOP
+      // ------------------------------------------------------------------------
+      window.addEventListener("load", () => {
+        logSOE("SYSTEM", "RUNTIME", "VANGUARD SCADA Supervisory Runtime initialized (Scan: 250ms)");
+        renderPenToggles();
+
+        // Pre-seed 35 samples so trend chart is immediately populated
+        for (let i = 0; i < 35; i++) {
+          stepSimulation(0.25);
+        }
+        renderAll();
+
+        setInterval(() => {
+          stepSimulation(state.scanIntervalMs / 1000);
+          renderAll();
+        }, state.scanIntervalMs);
+      });
+    })();
+  </script>
+</body>
+</html>
+```
